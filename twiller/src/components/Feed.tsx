@@ -5,6 +5,7 @@ import LoadingSpinner from "./loading-spinner";
 import TweetCard from "./TweetCard";
 import TweetComposer from "./TweetComposer";
 import axiosInstance from "@/lib/axiosInstance";
+import { useNotification } from "@/context/NotificationContext";
 
 interface Tweet {
   id: string;
@@ -88,11 +89,18 @@ const tweets: Tweet[] = [
 const Feed = () => {
   const [tweets, setTweets] = useState<any>([]);
   const [loading, setloading] = useState(false);
+  const { triggerTweetNotification } = useNotification();
   const fetchTweets = async () => {
     try {
       setloading(true);
       const res = await axiosInstance.get("/post");
-      setTweets(res.data);
+      const fetchedTweets = res.data;
+      setTweets(fetchedTweets);
+      // Fire notifications for keyword-matching tweets
+      fetchedTweets.forEach((tweet: any) => {
+        const authorName = tweet.author?.displayName || tweet.author?.username || "Someone";
+        triggerTweetNotification(tweet.content, authorName);
+      });
     } catch (error) {
       console.error(error);
     } finally {
@@ -104,6 +112,9 @@ const Feed = () => {
   }, []);
   const handlenewtweet = (newtweet: any) => {
     setTweets((prev: any) => [newtweet, ...prev]);
+    // Fire notification for the newly posted tweet
+    const authorName = newtweet.author?.displayName || newtweet.author?.username || "Someone";
+    triggerTweetNotification(newtweet.content, authorName);
   };
   return (
     <div className="min-h-screen">

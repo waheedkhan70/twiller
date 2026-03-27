@@ -9,8 +9,11 @@ import {
   MoreHorizontal,
   Camera,
   Settings,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -99,9 +102,26 @@ const tweets: Tweet[] = [
   },
 ];
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, toggleNotifications } = useAuth();
+  const { requestPermission } = useNotification();
   const [activeTab, setActiveTab] = useState("posts");
   const [showEditModal, setShowEditModal] = useState(false);
+  const [browserPermission, setBrowserPermission] = useState<NotificationPermission>("default");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setBrowserPermission(Notification.permission);
+    }
+  }, []);
+
+  const handleToggleNotifications = async () => {
+    // If user is enabling notifications, also request browser permission
+    if (!user?.notificationsEnabled) {
+      const permission = await requestPermission();
+      setBrowserPermission(permission);
+    }
+    await toggleNotifications();
+  };
 
   if (!user) return null;
   const [tweets, setTweets] = useState<any>([]);
@@ -228,6 +248,59 @@ export default function ProfilePage() {
                   year: "numeric",
                 })}
             </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Notification Settings */}
+      <div className="px-4 pb-2 mt-2">
+        <div className="border border-gray-800 rounded-2xl p-4 bg-gradient-to-br from-gray-900/80 to-black">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div
+                className={`p-2 rounded-full ${
+                  user.notificationsEnabled
+                    ? "bg-blue-500/20 text-blue-400"
+                    : "bg-gray-800 text-gray-500"
+                }`}
+              >
+                {user.notificationsEnabled ? (
+                  <Bell className="h-5 w-5" />
+                ) : (
+                  <BellOff className="h-5 w-5" />
+                )}
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Tweet Notifications</p>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  {user.notificationsEnabled
+                    ? "Get notified for tweets with \"cricket\" or \"science\""
+                    : "Notifications are currently disabled"}
+                </p>
+                {browserPermission === "denied" && (
+                  <p className="text-yellow-500 text-xs mt-1">
+                    ⚠️ Browser notifications are blocked. Allow them in browser settings.
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* Toggle Switch */}
+            <button
+              id="notification-toggle-btn"
+              onClick={handleToggleNotifications}
+              className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black ${
+                user.notificationsEnabled
+                  ? "bg-blue-500"
+                  : "bg-gray-700"
+              }`}
+              aria-label="Toggle notifications"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
+                  user.notificationsEnabled ? "translate-x-6" : "translate-x-0"
+                }`}
+              />
+            </button>
           </div>
         </div>
       </div>
