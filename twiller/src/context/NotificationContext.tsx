@@ -67,7 +67,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!matchedKeyword) return;
 
     // Fire the notification
-    const notification = new Notification("🔔 Trending Tweet!", {
+    const notification = new Notification("Trending Tweet!", {
       body: `${authorName}: ${tweetContent}`,
       icon: "/favicon.ico",
       tag: `tweet-${Date.now()}`,

@@ -4,15 +4,17 @@ import { Card, CardContent } from "./ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
-import { Image, Smile, Calendar, MapPin, BarChart3, Globe } from "lucide-react";
+import { Image, Smile, Calendar, MapPin, BarChart3, Globe, Mic } from "lucide-react";
 import { Separator } from "./ui/separator";
 import axios from "axios";
 import axiosInstance from "@/lib/axiosInstance";
+import AudioTweetModal from "./AudioTweetModal";
 const TweetComposer = ({ onTweetPosted }: any) => {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [imageurl, setimageurl] = useState("");
+  const [audioModalOpen, setAudioModalOpen] = useState(false);
   const maxLength = 200;
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -121,6 +123,17 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                   >
                     <MapPin className="h-5 w-5" />
                   </Button>
+                  {/* Audio Tweet button */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    title="Post Audio Tweet"
+                    className="p-2 rounded-full hover:bg-purple-900/20 text-purple-400 hover:text-purple-300"
+                    onClick={() => setAudioModalOpen(true)}
+                  >
+                    <Mic className="h-5 w-5" />
+                  </Button>
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
@@ -195,6 +208,16 @@ const TweetComposer = ({ onTweetPosted }: any) => {
           </div>
         </div>
       </CardContent>
+
+      {/* Audio Tweet Modal */}
+      <AudioTweetModal
+        isOpen={audioModalOpen}
+        onClose={() => setAudioModalOpen(false)}
+        onTweetPosted={(tweet) => {
+          onTweetPosted(tweet);
+          setAudioModalOpen(false);
+        }}
+      />
     </Card>
   );
 };

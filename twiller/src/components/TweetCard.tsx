@@ -10,6 +10,7 @@ import {
   Repeat2,
   Share,
   MoreHorizontal,
+  Mic,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/axiosInstance";
@@ -108,6 +109,29 @@ export default function TweetCard({ tweet }: any) {
                   src={tweetstate.image}
                   alt="Tweet image"
                   className="w-full h-auto max-h-96 object-cover"
+                />
+              </div>
+            )}
+
+            {/* ── Audio Tweet Player ── */}
+            {tweetstate.audio && (
+              <div className="mb-3 rounded-2xl overflow-hidden bg-gradient-to-br from-purple-950/40 to-indigo-950/40 border border-purple-800/30 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-600/20 border border-purple-500/30">
+                    <Mic className="h-4 w-4 text-purple-400" />
+                  </div>
+                  <span className="text-purple-300 text-sm font-semibold tracking-wide">Audio Tweet</span>
+                  <span className="ml-auto flex gap-0.5 items-end h-4">
+                    {[3,5,7,5,3,6,4,7,5,3].map((h, i) => (
+                      <span key={i} style={{ height: `${h}px` }} className="inline-block w-1 bg-purple-500/60 rounded-sm" />
+                    ))}
+                  </span>
+                </div>
+                <audio
+                  src={`http://localhost:5005${tweetstate.audio}`}
+                  controls
+                  className="w-full h-10 rounded-lg"
+                  style={{ accentColor: "#a855f7" }}
                 />
               </div>
             )}
