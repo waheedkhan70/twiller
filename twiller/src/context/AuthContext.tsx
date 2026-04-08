@@ -63,6 +63,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Load user from localStorage on mount (initial sync)
+  useEffect(() => {
+    const savedUser = localStorage.getItem("twitter-user");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
   useEffect(() => {
     // Check for existing session
     const unsubcribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -80,8 +88,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           console.log("Failed to fetch user:", err);
         }
       } else {
-        setUser(null);
-        localStorage.removeItem("twitter-user");
+        // Only clear user if no user exists in localStorage (which could be a backend-only session)
+        const savedUser = localStorage.getItem("twitter-user");
+        if (!savedUser) {
+          setUser(null);
+        }
       }
       setIsLoading(false);
     });
@@ -90,25 +101,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    // Mock authentication - in real app, this would call an API
-    const usercred = await signInWithEmailAndPassword(auth, email, password);
-    const firebaseuser = usercred.user;
-    const res = await axiosInstance.get("/loggedinuser", {
-      params: { email: firebaseuser.email },
-    });
-    if (res.data) {
-      setUser(res.data);
-      localStorage.setItem("twitter-user", JSON.stringify(res.data));
+    try {
+      // 1. Try Firebase authentication first
+      const usercred = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseuser = usercred.user;
+      const res = await axiosInstance.get("/loggedinuser", {
+        params: { email: firebaseuser.email },
+      });
+      if (res.data) {
+        setUser(res.data);
+        localStorage.setItem("twitter-user", JSON.stringify(res.data));
+      }
+    } catch (firebaseErr: any) {
+      console.warn("Firebase login failed, trying backend fallback...", firebaseErr.message);
+      
+      // 2. Fallback to backend login (for checking generatedPassword in MongoDB)
+      try {
+        const res = await axiosInstance.post("/login", { email, password });
+        if (res.data) {
+          setUser(res.data);
+          localStorage.setItem("twitter-user", JSON.stringify(res.data));
+        } else {
+          throw new Error("Invalid credentials");
+        }
+      } catch (backendErr: any) {
+        console.error("Backend login also failed:", backendErr.response?.data?.error || backendErr.message);
+        throw new Error(backendErr.response?.data?.error || "Invalid email or password");
+      }
+    } finally {
+      setIsLoading(false);
     }
-    // const mockUser: User = {
-    //   id: '1',
-    //   username: 'johndoe',
-    //   displayName: 'John Doe',
-    //   avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=400',
-    //   bio: 'Software developer passionate about building great products',
-    //   joinedDate: 'April 2024'
-    // };
-    setIsLoading(false);
   };
 
   const signup = async (

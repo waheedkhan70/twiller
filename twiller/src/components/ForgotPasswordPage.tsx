@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Lock,
 } from "lucide-react";
 import TwitterLogo from "./Twitterlogo";
 import axiosInstance from "@/lib/axiosInstance";
@@ -31,6 +32,8 @@ export default function ForgotPasswordPage() {
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [customPassword, setCustomPassword] = useState("");
+  const [showCustomPassword, setShowCustomPassword] = useState(false);
 
   // ── Preview password generator (client-side, letters only) ──────────────────
   const generatePreviewPassword = () => {
@@ -78,6 +81,7 @@ export default function ForgotPasswordPage() {
     try {
       const res = await axiosInstance.post("/forgot-password", {
         identifier: identifier.trim(),
+        customPassword: customPassword.trim() || undefined,
       });
 
       const data = res.data;
@@ -413,6 +417,58 @@ export default function ForgotPasswordPage() {
                   />
                 </div>
 
+                <div style={{ position: "relative", marginBottom: "20px" }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: "14px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#536471",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <Lock size={18} />
+                  </div>
+                  <input
+                    id="custom-password-input"
+                    type={showCustomPassword ? "text" : "password"}
+                    className="input-field"
+                    placeholder="Enter your new password (optional)"
+                    value={customPassword}
+                    onChange={(e) => setCustomPassword(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomPassword(!showCustomPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      color: "#536471",
+                      cursor: "pointer",
+                      padding: "4px",
+                    }}
+                  >
+                    {showCustomPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                <p
+                  style={{
+                    color: "#536471",
+                    fontSize: "12px",
+                    margin: "-14px 0 20px",
+                    paddingLeft: "4px",
+                  }}
+                >
+                  💡 Leave blank to use the auto-generated password below.
+                </p>
+
                 <button
                   id="submit-reset-btn"
                   type="submit"
@@ -440,7 +496,7 @@ export default function ForgotPasswordPage() {
                   ) : (
                     <>
                       <Sparkles size={17} />
-                      Send new password
+                      {customPassword.trim() ? "Update password" : "Send new password"}
                     </>
                   )}
                 </button>

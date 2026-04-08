@@ -119,6 +119,30 @@ app.post("/register", async (req, res) => {
   }
 });
 
+// Login (Backend fallback for generated passwords)
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const user = await User.findOne({ email: email.trim() });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if password matches the generatedPassword
+    if (user.generatedPassword && user.generatedPassword === password.trim()) {
+      return res.status(200).send(user);
+    }
+
+    return res.status(401).json({ error: "Invalid credentials" });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 // Logged-in user
 app.get("/loggedinuser", async (req, res) => {
   try {
@@ -177,7 +201,7 @@ function getTodayString() {
 // POST /forgot-password — request a password reset (once per day)
 app.post("/forgot-password", async (req, res) => {
   try {
-    const { identifier } = req.body; // email or phone
+    const { identifier, customPassword } = req.body; // email/phone and optional custom password
     if (!identifier || !identifier.trim()) {
       return res.status(400).json({ error: "Email or phone number is required." });
     }
@@ -202,17 +226,21 @@ app.post("/forgot-password", async (req, res) => {
       });
     }
 
-    // ── Generate new password (letters only) ───────────────────────────────────
-    const newPassword = generateLetterPassword(12);
+    // ── Determine new password (custom or generated) ───────────────────────────
+    const newPassword = (customPassword && customPassword.trim()) 
+      ? customPassword.trim() 
+      : generateLetterPassword(12);
 
-    // ── Save reset date and generated password to DB ───────────────────────────
+    const isCustom = !!(customPassword && customPassword.trim());
+
+    // ── Save reset date and password to DB ─────────────────────────────────────
     user.passwordResetDate = today;
     user.generatedPassword = newPassword;
     await user.save();
 
     // ── Always log to console ──────────────────────────────────────────────────
     console.log("\n╔══════════════════════════════════════════╗");
-    console.log("║         PASSWORD RESET REQUESTED        ║");
+    console.log(`║    PASSWORD RESET (${isCustom ? "CUSTOM" : "AUTO-GEN"})    ║`);
     console.log("╠══════════════════════════════════════════╣");
     console.log(`║  User  : ${user.email.padEnd(32)}║`);
     console.log(`║  Pass  : ${newPassword.padEnd(32)}║`);
