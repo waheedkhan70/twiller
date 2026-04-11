@@ -24,7 +24,7 @@ import {
 } from "./ui/dropdown-menu";
 
 export default function TweetCard({ tweet, onTweetDeleted }: any) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { t } = useTranslation();
   const [tweetstate, settweetstate] = useState(tweet);
   const likeTweet = async (tweetId: string) => {
@@ -126,7 +126,7 @@ export default function TweetCard({ tweet, onTweetDeleted }: any) {
                   <DropdownMenuContent className="bg-black border-gray-800 text-white min-w-[160px]">
 
                     {user?._id === tweetstate.author._id && (
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-red-500 hover:bg-red-950/30 cursor-pointer p-3 focus:text-red-500"
                         onClick={deleteTweet}
                       >
@@ -196,8 +196,8 @@ export default function TweetCard({ tweet, onTweetDeleted }: any) {
                 variant="ghost"
                 size="sm"
                 className={`flex items-center space-x-2 p-2 rounded-full hover:bg-green-900/20 group ${isRetweet
-                    ? "text-green-400"
-                    : "text-gray-500 hover:text-green-400"
+                  ? "text-green-400"
+                  : "text-gray-500 hover:text-green-400"
                   }`}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -206,8 +206,8 @@ export default function TweetCard({ tweet, onTweetDeleted }: any) {
               >
                 <Repeat2
                   className={`h-5 w-5 ${tweet.retweeted
-                      ? "text-green-400"
-                      : "group-hover:text-green-400"
+                    ? "text-green-400"
+                    : "group-hover:text-green-400"
                     }`}
                 />
                 <span className="text-sm">
@@ -227,8 +227,8 @@ export default function TweetCard({ tweet, onTweetDeleted }: any) {
               >
                 <Heart
                   className={`h-5 w-5 ${tweetstate.liked
-                      ? "text-red-500 fill-current"
-                      : "group-hover:text-red-400"
+                    ? "text-red-500 fill-current"
+                    : "group-hover:text-red-400"
                     }`}
                 />
                 <span className="text-sm">
