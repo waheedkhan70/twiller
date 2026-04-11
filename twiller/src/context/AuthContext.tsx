@@ -11,6 +11,8 @@ import {
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { auth } from "./firebase";
 import axiosInstance from "../lib/axiosInstance";
+import "../lib/i18n";
+import i18n from "../lib/i18n";
 
 interface User {
   _id: string;
@@ -86,6 +88,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           if (res.data) {
             setUser(res.data);
             localStorage.setItem("twitter-user", JSON.stringify(res.data));
+            // Sync i18n language with user preference
+            if (res.data.language && res.data.language !== i18n.language) {
+              i18n.changeLanguage(res.data.language);
+            }
           }
         } catch (err) {
           console.log("Failed to fetch user:", err);
@@ -271,10 +277,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const refreshUser = async () => {
     if (!user?.email) return;
     try {
+      // Add timestamp to bypass potential caching
       const res = await axiosInstance.get("/loggedinuser", {
-        params: { email: user.email },
+        params: { email: user.email, t: Date.now() },
       });
       if (res.data) {
+        localStorage.removeItem("twitter-user");
         setUser(res.data);
         localStorage.setItem("twitter-user", JSON.stringify(res.data));
       }

@@ -22,8 +22,11 @@ interface AuthModalProps {
   initialMode?: 'login' | 'signup';
 }
 
+import { useTranslation } from 'react-i18next';
+
 export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
   const { login, signup, isLoading } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
@@ -41,28 +44,28 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
     const newErrors: Record<string, string> = {};
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('errors.email_required');
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
+      newErrors.email = t('errors.email_invalid');
     }
 
     if (!formData.password.trim()) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('errors.password_required');
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = t('errors.password_min_length');
     }
 
     if (mode === 'signup') {
       if (!formData.username.trim()) {
-        newErrors.username = 'Username is required';
+        newErrors.username = t('errors.username_required');
       } else if (formData.username.length < 3) {
-        newErrors.username = 'Username must be at least 3 characters';
+        newErrors.username = t('errors.username_min_length');
       } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-        newErrors.username = 'Username can only contain letters, numbers, and underscores';
+        newErrors.username = t('errors.username_format');
       }
 
       if (!formData.displayName.trim()) {
-        newErrors.displayName = 'Display name is required';
+        newErrors.displayName = t('errors.display_name_required');
       }
     }
 
@@ -84,7 +87,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
       setFormData({ email: '', password: '', username: '', displayName: '' });
       setErrors({});
     } catch (error: any) {
-      setErrors({ general: error.message || 'Authentication failed. Please try again.' });
+      setErrors({ general: error.message || t('errors.auth_failed') });
     }
   };
 
@@ -118,7 +121,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
               <TwitterLogo size="xl" className="text-white" />
             </div>
             <CardTitle className="text-2xl font-bold">
-              {mode === 'login' ? 'Sign in to X' : 'Create your account'}
+              {mode === 'login' ? t('auth.login_to_twitter') : t('auth.create_account')}
             </CardTitle>
           </div>
         </CardHeader>
@@ -134,13 +137,13 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             {mode === 'signup' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="displayName" className="text-white">Display Name</Label>
+                  <Label htmlFor="displayName" className="text-white">{t('profile_edit.name_label')}</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <Input
                       id="displayName"
                       type="text"
-                      placeholder="Your display name"
+                      placeholder={t('profile_edit.name_placeholder')}
                       value={formData.displayName}
                       onChange={(e) => handleInputChange('displayName', e.target.value)}
                       className="pl-10 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
@@ -180,7 +183,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder={t('auth.enter_id_email')}
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   className="pl-10 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
@@ -199,7 +202,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
+                  placeholder={t('common.enter_otp')}
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   className="pl-10 pr-10 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
@@ -230,7 +233,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                     }}
                     disabled={isLoading}
                   >
-                    Forgot password?
+                    {t('auth.forgot_password')}
                   </button>
                 </div>
               )}
@@ -244,10 +247,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
               {isLoading ? (
                 <div className="flex items-center space-x-2">
                   <LoadingSpinner size="sm" />
-                  <span>{mode === 'login' ? 'Signing in...' : 'Creating account...'}</span>
+                  <span>{mode === 'login' ? t('common.processing') : t('common.processing')}</span>
                 </div>
               ) : (
-                mode === 'login' ? 'Sign in' : 'Create account'
+                mode === 'login' ? t('common.sign_in') : t('common.sign_up')
               )}
             </Button>
           </form>
@@ -261,14 +264,14 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
 
           <div className="text-center">
             <p className="text-gray-400">
-              {mode === 'login' ? "Don't have an account?" : "Already have an account?"}
+              {mode === 'login' ? t('auth.dont_have_account') : t('common.already_have_account')}
               <Button
                 variant="link"
                 className="text-blue-400 hover:text-blue-300 font-semibold pl-1"
                 onClick={switchMode}
                 disabled={isLoading}
               >
-                {mode === 'login' ? 'Sign up' : 'Sign in'}
+                {mode === 'login' ? t('common.sign_up') : t('common.sign_in')}
               </Button>
             </p>
           </div>

@@ -11,12 +11,21 @@ import {
   Share,
   MoreHorizontal,
   Mic,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/axiosInstance";
+import { useTranslation } from "react-i18next";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
-export default function TweetCard({ tweet }: any) {
+export default function TweetCard({ tweet, onTweetDeleted }: any) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [tweetstate, settweetstate] = useState(tweet);
   const likeTweet = async (tweetId: string) => {
     try {
@@ -37,6 +46,21 @@ export default function TweetCard({ tweet }: any) {
       settweetstate(res.data);
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  const deleteTweet = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(t('common.confirm'))) return;
+
+    try {
+      await axiosInstance.delete(`/post/${tweetstate._id}`, {
+        data: { userId: user?._id },
+      });
+      onTweetDeleted?.(tweetstate._id);
+      await refreshUser();
+    } catch (error) {
+      console.error("Deletion failed:", error);
     }
   };
   const formatNumber = (num: number) => {
@@ -83,19 +107,38 @@ export default function TweetCard({ tweet }: any) {
               <span className="text-gray-500">·</span>
               <span className="text-gray-500">
                 {tweetstate.timestamp &&
-                  new Date(tweetstate.timestamp).toLocaleDateString("en-us", {
+                  new Date(tweetstate.timestamp).toLocaleDateString(undefined, {
                     month: "long",
                     year: "numeric",
                   })}
               </span>
-              <div className="ml-auto">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-1 rounded-full hover:bg-gray-900"
-                >
-                  <MoreHorizontal className="h-5 w-5 text-gray-500" />
-                </Button>
+              <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-1 rounded-full hover:bg-gray-900"
+                    >
+                      <MoreHorizontal className="h-5 w-5 text-gray-500" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-black border-gray-800 text-white min-w-[160px]">
+                    <DropdownMenuItem className="hover:bg-gray-900 cursor-pointer p-3">
+                      <Share className="mr-2 h-4 w-4" />
+                      <span>{t('tweet.share')}</span>
+                    </DropdownMenuItem>
+                    {user?._id === tweetstate.author._id && (
+                      <DropdownMenuItem 
+                        className="text-red-500 hover:bg-red-950/30 cursor-pointer p-3 focus:text-red-500"
+                        onClick={deleteTweet}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>{t('tweet.delete')}</span>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
@@ -107,7 +150,7 @@ export default function TweetCard({ tweet }: any) {
               <div className="mb-3 rounded-2xl overflow-hidden">
                 <img
                   src={tweetstate.image}
-                  alt="Tweet image"
+                  alt={t('tweet.tweet_image')}
                   className="w-full h-auto max-h-96 object-cover"
                 />
               </div>
@@ -120,7 +163,7 @@ export default function TweetCard({ tweet }: any) {
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-600/20 border border-purple-500/30">
                     <Mic className="h-4 w-4 text-purple-400" />
                   </div>
-                  <span className="text-purple-300 text-sm font-semibold tracking-wide">Audio Tweet</span>
+                  <span className="text-purple-300 text-sm font-semibold tracking-wide">{t('tweet.audio_tweet_label')}</span>
                   <span className="ml-auto flex gap-0.5 items-end h-4">
                     {[3, 5, 7, 5, 3, 6, 4, 7, 5, 3].map((h, i) => (
                       <span key={i} style={{ height: `${h}px` }} className="inline-block w-1 bg-purple-500/60 rounded-sm" />

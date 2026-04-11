@@ -101,8 +101,11 @@ const tweets: Tweet[] = [
       "https://images.pexels.com/photos/196645/pexels-photo-196645.jpeg?auto=compress&cs=tinysrgb&w=800",
   },
 ];
+import { useTranslation } from "react-i18next";
+
 export default function ProfilePage() {
   const { user, toggleNotifications } = useAuth();
+  const { t } = useTranslation();
   const { requestPermission } = useNotification();
   const [activeTab, setActiveTab] = useState("posts");
   const [showEditModal, setShowEditModal] = useState(false);
@@ -140,6 +143,9 @@ export default function ProfilePage() {
   useEffect(() => {
     fetchTweets();
   }, []);
+  const handletweetdelete = (tweetId: string) => {
+    setTweets((prev: any) => prev.filter((t: any) => t._id !== tweetId));
+  };
   // Filter tweets by current user
   const userTweets = tweets.filter((tweet: any) => tweet.author._id === user._id);
 
@@ -157,7 +163,7 @@ export default function ProfilePage() {
           </Button>
           <div>
             <h1 className="text-xl font-bold text-white">{user.displayName}</h1>
-            <p className="text-sm text-gray-400">{userTweets.length} posts</p>
+            <p className="text-sm text-gray-400">{userTweets.length} {t('common.tweets')}</p>
           </div>
         </div>
       </div>
@@ -200,13 +206,13 @@ export default function ProfilePage() {
             className="border-gray-600 text-white bg-gray-950 font-semibold rounded-full px-6"
             onClick={() => setShowEditModal(true)}
           >
-            Edit profile
+            {t('common.edit_profile')}
           </Button>
         </div>
       </div>
 
       {/* Profile Info */}
-      <div className="px-4 pb-4 mt-12">
+      <div className="px-4 pb-4 mt-20">
         <div className="flex items-start justify-between mb-3">
           <div>
             <h1 className="text-2xl font-bold text-white">
@@ -241,7 +247,7 @@ export default function ProfilePage() {
           <div className="flex items-center space-x-1">
             <Calendar className="h-4 w-4" />
             <span>
-              Joined{" "}
+              {t('common.joined')}{" "}
               {user.joinedDate &&
                 new Date(user.joinedDate).toLocaleDateString("en-us", {
                   month: "long",
@@ -309,13 +315,13 @@ export default function ProfilePage() {
             value="posts"
             className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
           >
-            Posts
+            {t('common.tweets')}
           </TabsTrigger>
           <TabsTrigger
             value="replies"
             className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
           >
-            Replies
+            {t('common.replies')}
           </TabsTrigger>
           <TabsTrigger
             value="highlights"
@@ -352,7 +358,7 @@ export default function ProfilePage() {
               </Card>
             ) : (
               userTweets.map((tweet: any) => (
-                <TweetCard key={tweet._id} tweet={tweet} />
+                <TweetCard key={tweet._id} tweet={tweet} onTweetDeleted={handletweetdelete} />
               ))
             )}
           </div>

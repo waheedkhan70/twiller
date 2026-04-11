@@ -13,6 +13,7 @@ import User from "./models/user.js";
 import Tweet from "./models/tweet.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import twilio from "twilio";
 
 dotenv.config();
 
@@ -34,6 +35,8 @@ const url = process.env.MONGODB_URL;
 const otpStore = new Map();
 // verifiedTokens: { token -> { email, expiresAt } }
 const verifiedTokens = new Map();
+// languageOtpStore: { email -> { otp, expiresAt, targetLanguage } }
+const languageOtpStore = new Map();
 
 // ── Nodemailer transporter ────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
@@ -46,6 +49,11 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASSWORD?.replace(/\s/g, ""),
   },
 });
+
+// ── Twilio initialization ────────────────────────────────────────────────────
+const twilioClient = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN
+  ? twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+  : null;
 
 // ── Razorpay initialization ──────────────────────────────────────────────────
 const razorpay = new Razorpay({
@@ -392,11 +400,20 @@ app.post("/verify-subscription-payment", async (req, res) => {
       .digest("hex");
 
     if (razorpay_signature === expectedSign) {
+      console.log(`[PAYMENT VERIFIED] userId: ${userId} | Target Plan: ${plan}`);
+      
       const user = await User.findByIdAndUpdate(
         userId,
         { $set: { plan, tweetCount: 0 } },
         { new: true }
       );
+
+      if (!user) {
+        console.error(`[PAYMENT ERROR] User not found during update: ${userId}`);
+        return res.status(404).json({ error: "User not found during plan update." });
+      }
+
+      console.log(`[PLAN UPDATED] User: ${user.email} | New Plan: ${user.plan}`);
 
       // Send Invoice Email
       try {
@@ -474,6 +491,37 @@ app.post("/post", async (req, res) => {
     return res.status(201).send(tweet);
   } catch (error) {
     return res.status(400).send({ error: error.message });
+  }
+});
+
+// DELETE tweet
+app.delete("/post/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required for deletion." });
+    }
+
+    const tweet = await Tweet.findById(id);
+    if (!tweet) {
+      return res.status(404).json({ error: "Tweet not found." });
+    }
+
+    // Authorization check
+    if (tweet.author.toString() !== userId) {
+      return res.status(403).json({ error: "You are not authorized to delete this tweet." });
+    }
+
+    await Tweet.findByIdAndDelete(id);
+
+    // Decrement user's tweet count
+    await User.findByIdAndUpdate(userId, { $inc: { tweetCount: -1 } });
+
+    return res.status(200).json({ message: "Tweet deleted successfully." });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -707,6 +755,151 @@ app.post("/audio-tweet", audioUpload.single("audio"), async (req, res) => {
       fs.unlinkSync(uploadedFilePath);
     }
     console.error("audio-tweet error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+// ════════════════════════════════════════════════════════════════════════════════
+//  LANGUAGE CHANGE — OTP ROUTES
+// ════════════════════════════════════════════════════════════════════════════════
+
+// POST /send-language-otp — generate & send OTP for language change
+app.post("/send-language-otp", async (req, res) => {
+  try {
+    const { email, language } = req.body;
+    if (!email || !language) return res.status(400).json({ error: "Email and target language are required" });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 1000 * 60; // 5 minutes
+    languageOtpStore.set(email, { otp, expiresAt, targetLanguage: language });
+
+    const isFrench = language === "fr";
+
+    if (isFrench) {
+      // Send to email
+      console.log(`Sending language switch OTP to email: ${email}`);
+      let emailSent = false;
+      try {
+        await transporter.sendMail({
+          from: `"Twiller Security" <${process.env.SMTP_EMAIL}>`,
+          to: email,
+          subject: "Twiller Language Change Verification",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #000; color: #fff; border-radius: 12px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #1d9bf0, #7856ff); padding: 24px; text-align: center;">
+                <h1 style="margin: 0; font-size: 28px; letter-spacing: -1px;">🐦 Twiller</h1>
+              </div>
+              <div style="padding: 32px;">
+                <h2 style="color: #fff; margin-top: 0;">Language Switch Verification</h2>
+                <p style="color: #8b98a5;">You requested to change your language to <strong>French</strong>. Use the OTP below to verify your request.</p>
+                <div style="background: #16181c; border: 1px solid #2f3336; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+                  <span style="font-size: 40px; font-weight: 700; letter-spacing: 8px; color: #1d9bf0;">${otp}</span>
+                </div>
+                <p style="color: #536471; font-size: 13px;">This OTP will expire in 5 minutes.</p>
+              </div>
+            </div>
+          `,
+        });
+        emailSent = true;
+      } catch (err) {
+        console.warn(`Language OTP email failed: ${err.message}`);
+      }
+      
+      console.log("\n╔═══════════════════════════════════════╗");
+      console.log("║         LANGUAGE CHANGE OTP (FR)      ║");
+      console.log("╠═══════════════════════════════════════╣");
+      console.log(`║  Email : ${email.padEnd(29)}║`);
+      console.log(`║  OTP   : ${otp.padEnd(29)}║`);
+      console.log("╚═══════════════════════════════════════╝\n");
+
+      return res.status(200).json({ message: emailSent ? "OTP sent to your email" : "OTP generated (check console)", emailSent, method: "email" });
+    } else {
+      // Send to mobile logic
+      const phoneNumber = user.phone ? user.phone.trim() : "";
+      let smsSent = false;
+      let usedFallback = false;
+
+      if (phoneNumber && twilioClient && process.env.TWILIO_FROM_NUMBER) {
+        // Try real SMS
+        console.log(`Sending language switch OTP via Twilio to: ${phoneNumber}`);
+        try {
+          await twilioClient.messages.create({
+            body: `Twiller: Your language change OTP is ${otp}. It expires in 5 minutes.`,
+            from: process.env.TWILIO_FROM_NUMBER,
+            to: phoneNumber,
+          });
+          smsSent = true;
+        } catch (err) {
+          console.warn(` Twilio SMS failed: ${err.message}`);
+        }
+      }
+
+      if (!smsSent) {
+        // Fallback to email if phone is missing or SMS failed
+        console.log(`Falling back to email for non-French OTP for ${email}`);
+        try {
+          await transporter.sendMail({
+            from: `"Twiller Security" <${process.env.SMTP_EMAIL}>`,
+            to: email,
+            subject: "Twiller Verification Fallback",
+            html: `<p>You requested a language change but we couldn't send an SMS. Use this OTP: <b>${otp}</b></p>`
+          });
+          usedFallback = true;
+        } catch (err) {
+          console.warn(` Fallback email failed: ${err.message}`);
+        }
+      }
+
+      console.log("\n╔═══════════════════════════════════════╗");
+      console.log("║      LANGUAGE CHANGE OTP (MOBILE)     ║");
+      console.log("╠═══════════════════════════════════════╣");
+      console.log(`║  Email : ${email.padEnd(29)}║`);
+      console.log(`║  Phone : ${phoneNumber.padEnd(29)}║`);
+      console.log(`║  OTP   : ${otp.padEnd(29)}║`);
+      console.log(`║  Sent  : ${smsSent ? "Twilio SMS" : usedFallback ? "Email Fallback" : "Console Only"}  ║`);
+      console.log("╚═══════════════════════════════════════╝\n");
+
+      return res.status(200).json({ 
+        message: smsSent ? "OTP sent to your mobile" : usedFallback ? "OTP sent to your email (SMS fallback)" : "OTP generated (check console)", 
+        smsSent, 
+        usedFallback,
+        method: smsSent ? "mobile" : "email"
+      });
+    }
+  } catch (error) {
+    console.error("send-language-otp error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /verify-language-otp — verify OTP and update language
+app.post("/verify-language-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: "Email and OTP are required" });
+
+    const record = languageOtpStore.get(email);
+    if (!record) return res.status(400).json({ error: "No OTP found. Please request a new one." });
+    if (Date.now() > record.expiresAt) {
+      languageOtpStore.delete(email);
+      return res.status(400).json({ error: "OTP has expired." });
+    }
+    if (record.otp !== otp.trim()) {
+      return res.status(400).json({ error: "Invalid OTP." });
+    }
+
+    const { targetLanguage } = record;
+    languageOtpStore.delete(email);
+
+    // Update user language in DB
+    const user = await User.findOneAndUpdate({ email }, { $set: { language: targetLanguage } }, { new: true });
+
+    return res.status(200).json({ message: "Language updated successfully", user, language: targetLanguage });
+  } catch (error) {
+    console.error("verify-language-otp error:", error);
     return res.status(500).json({ error: error.message });
   }
 });

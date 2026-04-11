@@ -18,6 +18,8 @@ const UserSchema = mongoose.Schema({
   plan: { type: String, enum: ["Free", "Bronze", "Silver", "Gold"], default: "Free" },
   // Track total tweets posted by the user
   tweetCount: { type: Number, default: 0 },
+  // Preferred language
+  language: { type: String, default: "en" },
 });
 
 export default mongoose.model("User", UserSchema);

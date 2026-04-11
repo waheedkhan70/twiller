@@ -13,6 +13,7 @@ import { Check, Zap, Star, Shield, Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/axiosInstance";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -56,6 +57,7 @@ const PLANS = [
 
 export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModalProps) {
   const { user, refreshUser } = useAuth();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState<string | null>(null);
   const [isWindowOpen, setIsWindowOpen] = useState(true);
 
@@ -114,10 +116,11 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
               userId: user?._id,
               plan: planName,
             });
-            toast.success(`Welcome to ${planName}! Check your email for the invoice.`);
-            onClose();
-            // Pull latest plan data
             await refreshUser();
+            // Use confirmed plan from backend response if available
+            const confirmedPlan = (data as any)?.user?.plan || planName;
+            toast.success(`Welcome to ${confirmedPlan}! Check your email for the invoice.`);
+            onClose();
           } catch (err: any) {
             console.error("Payment verification failed details:", err.response?.data || err.message);
             toast.error("Payment verification failed.");
@@ -147,10 +150,10 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
         <div className="p-6">
           <DialogHeader className="mb-6">
             <DialogTitle className="text-3xl font-bold flex items-center gap-2">
-              Upgrade Your Experience <Zap className="text-blue-500" />
+              {t('premium.upgrade_experience')} <Zap className="text-blue-500" />
             </DialogTitle>
             <DialogDescription className="text-gray-400 text-lg">
-              Choose a plan that fits your posting needs.
+              {t('premium.choose_plan')}
             </DialogDescription>
           </DialogHeader>
 
@@ -179,7 +182,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
                 >
                   {isCurrent && (
                     <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded">
-                      Current Plan
+                      {t('premium.current_plan')}
                     </span>
                   )}
                   
@@ -212,7 +215,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
                       isCurrent ? "bg-gray-800 text-white cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
                     }`}
                   >
-                    {loading === plan.name ? "Processing..." : isCurrent ? "Active" : `Upgrade to ${plan.name}`}
+                    {loading === plan.name ? "Processing..." : isCurrent ? t('premium.active') : t('premium.upgrade_to', { plan: plan.name })}
                   </Button>
                 </div>
               );

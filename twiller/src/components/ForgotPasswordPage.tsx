@@ -16,11 +16,13 @@ import {
 } from "lucide-react";
 import TwitterLogo from "./Twitterlogo";
 import axiosInstance from "@/lib/axiosInstance";
+import { useTranslation } from "react-i18next";
 
 type Step = "form" | "success";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [step, setStep] = useState<Step>("form");
   const [identifierType, setIdentifierType] = useState<"email" | "phone">("email");
@@ -63,8 +65,8 @@ export default function ForgotPasswordPage() {
     if (!identifier.trim()) {
       setError(
         identifierType === "email"
-          ? "Please enter your registered email address."
-          : "Please enter your registered phone number."
+          ? t('auth.enter_id_email')
+          : t('auth.enter_id_phone')
       );
       return;
     }
@@ -73,7 +75,7 @@ export default function ForgotPasswordPage() {
       identifierType === "email" &&
       !/\S+@\S+\.\S+/.test(identifier.trim())
     ) {
-      setError("Please enter a valid email address.");
+      setError(t('errors.email_invalid'));
       return;
     }
 
@@ -93,7 +95,7 @@ export default function ForgotPasswordPage() {
       setStep("success");
     } catch (err: any) {
       const msg =
-        err?.response?.data?.error || "Something went wrong. Please try again.";
+        err?.response?.data?.error || t('errors.generic_error');
       const code = err?.response?.data?.code;
 
       if (code === "DAILY_LIMIT_REACHED") {
@@ -281,7 +283,7 @@ export default function ForgotPasswordPage() {
               letterSpacing: "-0.5px",
             }}
           >
-            {step === "form" ? "Forgot your password?" : "Check your inbox!"}
+            {step === "form" ? t('auth.reset_title') : t('auth.reset_success_title')}
           </h1>
           <p
             style={{
@@ -291,8 +293,8 @@ export default function ForgotPasswordPage() {
             }}
           >
             {step === "form"
-              ? "We'll send a new temporary password to your account"
-              : "Your new password has been generated"}
+              ? t('auth.reset_subheader')
+              : t('auth.reset_success_subheader')}
           </p>
         </div>
 
@@ -375,7 +377,7 @@ export default function ForgotPasswordPage() {
                     id={`toggle-${type}`}
                   >
                     {type === "email" ? <Mail size={15} /> : <Phone size={15} />}
-                    {type === "email" ? "Email" : "Phone"}
+                    {type === "email" ? t('common.messages') : t('auth.enter_id_phone')}
                   </button>
                 ))}
               </div>
@@ -404,8 +406,8 @@ export default function ForgotPasswordPage() {
                     className="input-field"
                     placeholder={
                       identifierType === "email"
-                        ? "Enter your registered email"
-                        : "Enter your registered phone number"
+                        ? t('auth.enter_id_email')
+                        : t('auth.enter_id_phone')
                     }
                     value={identifier}
                     onChange={(e) => {
@@ -434,7 +436,7 @@ export default function ForgotPasswordPage() {
                     id="custom-password-input"
                     type={showCustomPassword ? "text" : "password"}
                     className="input-field"
-                    placeholder="Enter your new password (optional)"
+                    placeholder={t('auth.enter_new_password')}
                     value={customPassword}
                     onChange={(e) => setCustomPassword(e.target.value)}
                     disabled={isLoading}
@@ -466,7 +468,7 @@ export default function ForgotPasswordPage() {
                     paddingLeft: "4px",
                   }}
                 >
-                  💡 Leave blank to use the auto-generated password below.
+                  {t('auth.leave_blank_hint')}
                 </p>
 
                 <button
@@ -490,13 +492,13 @@ export default function ForgotPasswordPage() {
                   {isLoading ? (
                     <>
                       <RefreshCw size={17} style={{ animation: "spin 0.9s linear infinite" }} />
-                      Generating password...
+                      {t('auth.updating_password')}
                       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                     </>
                   ) : (
                     <>
                       <Sparkles size={17} />
-                      {customPassword.trim() ? "Update password" : "Send new password"}
+                      {customPassword.trim() ? t('auth.update_password_btn') : t('auth.send_password_btn')}
                     </>
                   )}
                 </button>
@@ -522,7 +524,7 @@ export default function ForgotPasswordPage() {
                     fontWeight: 600,
                   }}
                 >
-                  Password preview (letters only)
+                  {t('auth.password_preview')}
                 </p>
                 <div
                   style={{
@@ -593,7 +595,7 @@ export default function ForgotPasswordPage() {
                     margin: "8px 0 0",
                   }}
                 >
-                  ✅ Only uppercase &amp; lowercase letters — no numbers or special characters
+                  {t('auth.password_hint')}
                 </p>
               </div>
 
@@ -619,7 +621,7 @@ export default function ForgotPasswordPage() {
                     ((e.currentTarget as HTMLElement).style.color = "#1d9bf0")
                   }
                 >
-                  ← Back to Sign in
+                    {t('auth.back_to_signin')}
                 </button>
               </div>
             </>
@@ -650,7 +652,7 @@ export default function ForgotPasswordPage() {
                   margin: "0 0 10px",
                 }}
               >
-                Password Reset Successful!
+                {t('auth.reset_successful')}
               </h2>
 
               <p style={{ color: "#8b98a5", fontSize: "14px", marginBottom: "24px" }}>
@@ -678,7 +680,7 @@ export default function ForgotPasswordPage() {
                       fontWeight: 600,
                     }}
                   >
-                    Your new temporary password
+                    {t('auth.temp_password_label')}
                   </p>
                   <div
                     style={{
@@ -715,7 +717,7 @@ export default function ForgotPasswordPage() {
                       margin: "10px 0 0",
                     }}
                   >
-                    Letters only · Copy and use this to sign in
+                    {t('auth.password_copy_hint')}
                   </p>
                 </div>
               )}
@@ -732,7 +734,7 @@ export default function ForgotPasswordPage() {
                     fontSize: "13px",
                   }}
                 >
-                  ⚠️ Email delivery failed — check the backend console for your new password.
+                  {t('auth.email_fail_warning')}
                 </div>
               )}
 
@@ -748,7 +750,7 @@ export default function ForgotPasswordPage() {
                   textAlign: "left",
                 }}
               >
-                💡 <strong style={{ color: "#fff" }}>Tip:</strong> You can request a new password only once per day. After signing in, update your password from profile settings.
+                {t('auth.daily_limit_tip')}
               </div>
 
               <button
@@ -768,7 +770,7 @@ export default function ForgotPasswordPage() {
                   cursor: "pointer",
                 }}
               >
-                Go to Sign in →
+                {t('auth.go_to_signin')}
               </button>
             </div>
           )}

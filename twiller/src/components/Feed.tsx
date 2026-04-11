@@ -6,6 +6,7 @@ import TweetCard from "./TweetCard";
 import TweetComposer from "./TweetComposer";
 import axiosInstance from "@/lib/axiosInstance";
 import { useNotification } from "@/context/NotificationContext";
+import { useTranslation } from "react-i18next";
 
 interface Tweet {
   id: string;
@@ -90,6 +91,7 @@ const Feed = () => {
   const [tweets, setTweets] = useState<any>([]);
   const [loading, setloading] = useState(false);
   const { triggerTweetNotification } = useNotification();
+  const { t } = useTranslation();
   const fetchTweets = async () => {
     try {
       setloading(true);
@@ -98,7 +100,7 @@ const Feed = () => {
       setTweets(fetchedTweets);
       // Fire notifications for keyword-matching tweets
       fetchedTweets.forEach((tweet: any) => {
-        const authorName = tweet.author?.displayName || tweet.author?.username || "Someone";
+        const authorName = tweet.author?.displayName || tweet.author?.username || t('tweet.someone');
         triggerTweetNotification(tweet.content, authorName);
       });
     } catch (error) {
@@ -113,14 +115,17 @@ const Feed = () => {
   const handlenewtweet = (newtweet: any) => {
     setTweets((prev: any) => [newtweet, ...prev]);
     // Fire notification for the newly posted tweet
-    const authorName = newtweet.author?.displayName || newtweet.author?.username || "Someone";
+    const authorName = newtweet.author?.displayName || newtweet.author?.username || t('tweet.someone');
     triggerTweetNotification(newtweet.content, authorName);
+  };
+  const handletweetdelete = (tweetId: string) => {
+    setTweets((prev: any) => prev.filter((t: any) => t._id !== tweetId));
   };
   return (
     <div className="min-h-screen">
       <div className="sticky top-0 bg-black/90 backdrop-blur-md border-b border-gray-800 z-10">
         <div className="px-4 py-3">
-          <h1 className="text-xl font-bold text-white">Home</h1>
+          <h1 className="text-xl font-bold text-white">{t('common.home')}</h1>
         </div>
 
         <Tabs defaultValue="foryou" className="w-full">
@@ -129,13 +134,13 @@ const Feed = () => {
               value="foryou"
               className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-1 data-[state=active]:border-blue-100 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
             >
-              For you
+              {t('common.for_you')}
             </TabsTrigger>
             <TabsTrigger
               value="following"
               className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-1 data-[state=active]:border-blue-100 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
             >
-              Following
+              {t('common.following')}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -147,12 +152,12 @@ const Feed = () => {
             <CardContent className="py-12 text-center">
               <div className="text-gray-400 mb-4">
                 <LoadingSpinner size="lg" className="mx-auto mb-4" />
-                <p>Loading tweets...</p>
+                 <p>{t('common.processing')}</p>
               </div>
             </CardContent>
           </Card>
         ) : (
-          tweets.map((tweet: any) => <TweetCard key={tweet._id} tweet={tweet} />)
+          tweets.map((tweet: any) => <TweetCard key={tweet._id} tweet={tweet} onTweetDeleted={handletweetdelete} />)
         )}
       </div>
     </div>

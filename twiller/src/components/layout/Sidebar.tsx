@@ -25,6 +25,8 @@ import {
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import TwitterLogo from '../Twitterlogo';
+import { useTranslation } from 'react-i18next';
+import LanguageSelector from '../LanguageSelector';
 import { useAuth } from '@/context/AuthContext';
 
 interface SidebarProps {
@@ -35,16 +37,17 @@ interface SidebarProps {
 
 export default function Sidebar({ currentPage = 'home', onNavigate, onOpenPremium }: SidebarProps) {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
 
   const navigation = [
-    { name: 'Home', icon: Home, current: currentPage === 'home', page: 'home' },
-    { name: 'Explore', icon: Search, current: currentPage === 'explore', page: 'explore' },
-    { name: 'Notifications', icon: Bell, current: currentPage === 'notifications', page: 'notifications', badge: true },
-    { name: 'Messages', icon: Mail, current: currentPage === 'messages', page: 'messages' },
-    { name: 'Bookmarks', icon: Bookmark, current: currentPage === 'bookmarks', page: 'bookmarks' },
-    { name: 'Profile', icon: User, current: currentPage === 'profile', page: 'profile' },
+    { name: t('common.home'), icon: Home, current: currentPage === 'home', page: 'home' },
+    { name: t('common.explore'), icon: Search, current: currentPage === 'explore', page: 'explore' },
+    { name: t('common.notifications'), icon: Bell, current: currentPage === 'notifications', page: 'notifications', badge: true },
+    { name: t('common.messages'), icon: Mail, current: currentPage === 'messages', page: 'messages' },
+    { name: t('common.bookmarks'), icon: Bookmark, current: currentPage === 'bookmarks', page: 'bookmarks' },
+    { name: t('common.profile'), icon: User, current: currentPage === 'profile', page: 'profile' },
     { name: 'Premium', icon: Zap, current: currentPage === 'premium', onClick: onOpenPremium },
-    { name: 'More', icon: MoreHorizontal, current: currentPage === 'more', page: 'more' },
+    { name: t('common.more'), icon: MoreHorizontal, current: currentPage === 'more', page: 'more' },
   ];
 
   return (
@@ -52,16 +55,15 @@ export default function Sidebar({ currentPage = 'home', onNavigate, onOpenPremiu
       <div className="p-4">
         <TwitterLogo size="lg" className="text-white" />
       </div>
-      
+
       <nav className="flex-1 px-2">
         <ul className="space-y-2">
           {navigation.map((item) => (
             <li key={item.name}>
               <Button
                 variant="ghost"
-                className={`w-full justify-start text-xl py-6 px-4 rounded-full hover:bg-gray-900 ${
-                  item.current ? 'font-bold' : 'font-normal'
-                } text-white hover:text-white`}
+                className={`w-full justify-start text-xl py-6 px-4 rounded-full hover:bg-gray-900 ${item.current ? 'font-bold' : 'font-normal'
+                  } text-white hover:text-white`}
                 onClick={() => {
                   if (item.onClick) item.onClick();
                   else onNavigate?.(item.page!);
@@ -78,14 +80,18 @@ export default function Sidebar({ currentPage = 'home', onNavigate, onOpenPremiu
             </li>
           ))}
         </ul>
-        
+
+        <div className="mt-4">
+          <LanguageSelector />
+        </div>
+
         <div className="mt-8 px-2">
           <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-full text-lg">
-            Post
+            {t('common.post')}
           </Button>
         </div>
       </nav>
-      
+
       {user && (
         <div className="p-4 border-t border-gray-800">
           <DropdownMenu>
@@ -111,7 +117,7 @@ export default function Sidebar({ currentPage = 'home', onNavigate, onOpenPremiu
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-800" />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 className="text-white hover:bg-gray-900"
                 onClick={logout}
               >

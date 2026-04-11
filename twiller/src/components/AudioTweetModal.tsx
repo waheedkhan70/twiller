@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/axiosInstance";
 import axios from "axios";
 import { Zap } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const PLAN_LIMITS: Record<string, number> = {
   Free: 1,
@@ -54,6 +55,7 @@ const BACKEND_URL = "http://localhost:5005";
 // ─── Component ─────────────────────────────────────────────────────────────────
 export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Props) {
   const { user, refreshUser } = useAuth();
+  const { t } = useTranslation();
 
   const [step, setStep] = useState<Step>("request-otp");
   const [activeTab, setActiveTab] = useState<UploadTab>("record");
@@ -189,7 +191,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
   const sendOtp = async () => {
     if (!user?.email) return;
     if (isAtTweetLimit) {
-      setOtpError(`Limit reached for ${user?.plan} plan. Please upgrade.`);
+      setOtpError(t('errors.limit_reached', { plan: user?.plan }));
       return;
     }
     setOtpLoading(true);
@@ -201,7 +203,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
       setStep("verify-otp");
       setResendCountdown(60);
     } catch (err: any) {
-      const msg = err.response?.data?.error || "Failed to send OTP. Please try again.";
+      const msg = err.response?.data?.error || t('errors.auth_failed');
       setOtpError(msg);
     } finally {
       setOtpLoading(false);
@@ -212,7 +214,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
   const verifyOtp = async () => {
     const otp = otpCode.join("");
     if (otp.length !== 6) {
-      setOtpError("Please enter the complete 6-digit OTP.");
+      setOtpError(t('errors.otp_6_digits'));
       return;
     }
     setOtpLoading(true);
@@ -349,7 +351,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
         <div className="audio-modal-header">
           <div className="audio-modal-title">
             <span className="audio-modal-icon"></span>
-            <span>Audio Tweet</span>
+            <span>{t('audio_modal.post_audio_tweet')}</span>
           </div>
           <button className="audio-modal-close" onClick={onClose} aria-label="Close">✕</button>
         </div>
@@ -361,10 +363,10 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
           <div className="audio-step">
             <div className="audio-time-restricted">
               <div className="audio-time-icon"></div>
-              <h3>Feature Unavailable Right Now</h3>
-              <p>Audio tweets can only be posted between</p>
-              <div className="audio-time-window">2:00 PM – 7:00 PM IST</div>
-              <p className="audio-time-sub">Please come back during this window to post your audio tweet.</p>
+              <h3>{t('audio_modal.feature_unavailable')}</h3>
+              <p>{t('audio_modal.time_window_msg')}</p>
+              <div className="audio-time-window">{t('audio_modal.time_window')}</div>
+              <p className="audio-time-sub">{t('audio_modal.come_back_msg')}</p>
             </div>
           </div>
         )}
@@ -376,9 +378,9 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
           <div className="audio-step">
             <div className="audio-otp-intro">
               <div className="audio-shield-icon"></div>
-              <h3>Verify Your Identity</h3>
+              <h3>{t('audio_modal.verify_identity')}</h3>
               <p>
-                To post an audio tweet, we'll send a one-time passcode to
+                {t('audio_modal.send_otp_email')} to
               </p>
               <div className="audio-email-badge">{maskEmail(user.email)}</div>
             </div>
@@ -390,7 +392,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
               onClick={sendOtp}
               disabled={otpLoading}
             >
-              {otpLoading ? <span className="audio-spinner" /> : "Send OTP to my Email"}
+              {otpLoading ? <span className="audio-spinner" /> : t('audio_modal.send_otp_email')}
             </button>
           </div>
         )}
@@ -402,8 +404,8 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
           <div className="audio-step">
             <div className="audio-otp-intro">
               <div className="audio-shield-icon"></div>
-              <h3>Enter your OTP</h3>
-              <p>We sent a 6-digit code to <strong>{maskEmail(user.email)}</strong></p>
+              <h3>{t('audio_modal.enter_otp')}</h3>
+              <p>{t('audio_modal.enter_otp')} <strong>{maskEmail(user.email)}</strong></p>
             </div>
 
             {/* Console-hint banner when email delivery failed */}
@@ -411,9 +413,9 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
               <div className="audio-console-hint">
                 <span className="audio-console-hint-icon"></span>
                 <div>
-                  <p className="audio-console-hint-title">Email not delivered</p>
+                  <p className="audio-console-hint-title">{t('audio_modal.email_hint_title')}</p>
                   <p className="audio-console-hint-body">
-                    Check your <strong>backend terminal</strong> for the OTP — it was printed there.
+                    {t('audio_modal.email_hint_body')}
                   </p>
                 </div>
               </div>
@@ -443,12 +445,12 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
               onClick={verifyOtp}
               disabled={otpLoading || otpCode.join("").length !== 6}
             >
-              {otpLoading ? <span className="audio-spinner" /> : "Verify OTP"}
+              {otpLoading ? <span className="audio-spinner" /> : t('audio_modal.verify_otp')}
             </button>
 
             <div className="audio-resend-row">
               {resendCountdown > 0 ? (
-                <span className="audio-resend-timer">Resend in {resendCountdown}s</span>
+                <span className="audio-resend-timer">{t('audio_modal.resend_in', { count: resendCountdown })}</span>
               ) : (
                 <button
                   className="audio-btn-ghost"
@@ -472,13 +474,13 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
                 className={`audio-tab ${activeTab === "record" ? "audio-tab-active" : ""}`}
                 onClick={() => setActiveTab("record")}
               >
-                Record
+                {t('audio_modal.record')}
               </button>
               <button
                 className={`audio-tab ${activeTab === "upload" ? "audio-tab-active" : ""}`}
                 onClick={() => setActiveTab("upload")}
               >
-                Upload File
+                {t('audio_modal.upload_file')}
               </button>
             </div>
 
@@ -515,12 +517,12 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
                 <div className="audio-record-controls">
                   {!isRecording && !recordedBlob && (
                     <button className="audio-btn-record" onClick={startRecording}>
-                      <span className="audio-rec-dot" /> Start Recording
+                      <span className="audio-rec-dot" /> {t('audio_modal.start_recording')}
                     </button>
                   )}
                   {isRecording && (
                     <button className="audio-btn-stop" onClick={stopRecording}>
-                      ⏹ Stop Recording
+                      ⏹ {t('audio_modal.stop_recording')}
                     </button>
                   )}
                   {recordedBlob && !isRecording && (
@@ -530,7 +532,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
                         className="audio-btn-ghost"
                         onClick={() => { setRecordedBlob(null); setRecordedUrl(""); setRecordingSeconds(0); }}
                       >
-                        Re-record
+                        {t('audio_modal.re_record')}
                       </button>
                     </div>
                   )}
@@ -544,8 +546,8 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
                 {!uploadedFile ? (
                   <label className="audio-dropzone" htmlFor="audioFileInput">
                     <div className="audio-dropzone-icon">🎵</div>
-                    <p className="audio-dropzone-text">Click to choose an audio file</p>
-                    <p className="audio-dropzone-sub">MP3, WAV, OGG, M4A, WebM · Max 100 MB · Max 5 min</p>
+                    <p className="audio-dropzone-text">{t('audio_modal.click_choose_file')}</p>
+                    <p className="audio-dropzone-sub">{t('audio_modal.file_limits')}</p>
                     <input
                       id="audioFileInput"
                       type="file"
@@ -568,7 +570,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
                       className="audio-btn-ghost-sm"
                       onClick={() => { setUploadedFile(null); setUploadedUrl(""); }}
                     >
-                      Remove
+                      {t('common.cancel')}
                     </button>
                   </div>
                 )}
@@ -581,7 +583,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
               <div className="audio-caption-section">
                 <textarea
                   className="audio-caption"
-                  placeholder="Add a caption... (optional)"
+                  placeholder={t('tweet.caption_placeholder')}
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   maxLength={200}
@@ -598,7 +600,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
               onClick={submitAudioTweet}
               disabled={!hasAudio || submitting}
             >
-              {submitting ? <span className="audio-spinner" /> : "Post Audio Tweet"}
+              {submitting ? <span className="audio-spinner" /> : t('audio_modal.post_audio_tweet')}
             </button>
           </div>
         )}

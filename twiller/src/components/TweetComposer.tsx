@@ -11,6 +11,8 @@ import axiosInstance from "@/lib/axiosInstance";
 import AudioTweetModal from "./AudioTweetModal";
 import { Zap } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
+
 const PLAN_LIMITS: Record<string, number> = {
   Free: 1,
   Bronze: 3,
@@ -19,6 +21,7 @@ const PLAN_LIMITS: Record<string, number> = {
 };
 const TweetComposer = ({ onTweetPosted }: any) => {
   const { user, refreshUser } = useAuth();
+  const { t } = useTranslation();
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [imageurl, setimageurl] = useState("");
@@ -86,7 +89,7 @@ const TweetComposer = ({ onTweetPosted }: any) => {
           <div className="flex-1">
             <form onSubmit={handleSubmit}>
               <Textarea
-                placeholder="What's happening?"
+                placeholder={t('common.what_is_happening')}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 className="bg-transparent border-none text-xl text-white placeholder-gray-500 resize-none min-h-[120px] focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -141,7 +144,7 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    title="Post Audio Tweet"
+                    title={t('audio_modal.post_audio_tweet')}
                     className="p-2 rounded-full hover:bg-purple-900/20 text-purple-400 hover:text-purple-300"
                     onClick={() => setAudioModalOpen(true)}
                   >
@@ -152,7 +155,7 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                   <div className="flex items-center space-x-2">
                     <Globe className="h-4 w-4 text-blue-400" />
                     <span className="text-sm text-blue-400 font-semibold">
-                      Everyone can reply
+                      {t('tweet.everyone_reply')}
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -210,9 +213,9 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                     <Button
                       type="submit"
                       disabled={!content.trim() || isOverLimit || isLoading || isAtTweetLimit}
-                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-full px-6"
+                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-full px-4"
                     >
-                      {isAtTweetLimit ? "Limit Reached" : "Post"}
+                      {isAtTweetLimit ? t('errors.limit_reached') : t('common.post')}
                     </Button>
                   </div>
                 </div>
@@ -220,7 +223,7 @@ const TweetComposer = ({ onTweetPosted }: any) => {
               {isAtTweetLimit && (
                 <div className="mt-2 flex items-center gap-2 text-xs text-yellow-500 bg-yellow-900/10 p-2 rounded">
                   <Zap className="h-3 w-3" />
-                  <span>You've reached your {user.plan} plan limit. Upgrade in Premium tab to post more!</span>
+                  <span>{t('errors.limit_reached_msg', { plan: user.plan })}</span>
                 </div>
               )}
             </form>
