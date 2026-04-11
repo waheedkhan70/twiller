@@ -71,7 +71,7 @@ const tweets: Tweet[] = [
       verified: false,
     },
     content:
-      "Working on some exciting new features for our app. Can't wait to share what we've been building! 🚀",
+      "Working on some exciting new features for our app. Can't wait to share what we've been building!",
     timestamp: "4h",
     likes: 89,
     retweets: 23,
@@ -258,11 +258,10 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div
-                className={`p-2 rounded-full ${
-                  user.notificationsEnabled
+                className={`p-2 rounded-full ${user.notificationsEnabled
                     ? "bg-blue-500/20 text-blue-400"
                     : "bg-gray-800 text-gray-500"
-                }`}
+                  }`}
               >
                 {user.notificationsEnabled ? (
                   <Bell className="h-5 w-5" />
@@ -279,7 +278,7 @@ export default function ProfilePage() {
                 </p>
                 {browserPermission === "denied" && (
                   <p className="text-yellow-500 text-xs mt-1">
-                    ⚠️ Browser notifications are blocked. Allow them in browser settings.
+                    Browser notifications are blocked. Allow them in browser settings.
                   </p>
                 )}
               </div>
@@ -288,17 +287,15 @@ export default function ProfilePage() {
             <button
               id="notification-toggle-btn"
               onClick={handleToggleNotifications}
-              className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black ${
-                user.notificationsEnabled
+              className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black ${user.notificationsEnabled
                   ? "bg-blue-500"
                   : "bg-gray-700"
-              }`}
+                }`}
               aria-label="Toggle notifications"
             >
               <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
-                  user.notificationsEnabled ? "translate-x-6" : "translate-x-0"
-                }`}
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${user.notificationsEnabled ? "translate-x-6" : "translate-x-0"
+                  }`}
               />
             </button>
           </div>
@@ -342,7 +339,7 @@ export default function ProfilePage() {
 
         <TabsContent value="posts" className="mt-0">
           <div className="divide-y divide-gray-800">
-            { loading ? (
+            {loading ? (
               <Card className="bg-black border-none">
                 <CardContent className="py-12 text-center">
                   <div className="text-gray-400">
@@ -354,7 +351,7 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
             ) : (
-              userTweets.map((tweet:any) => (
+              userTweets.map((tweet: any) => (
                 <TweetCard key={tweet._id} tweet={tweet} />
               ))
             )}

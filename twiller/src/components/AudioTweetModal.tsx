@@ -4,6 +4,14 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import axiosInstance from "@/lib/axiosInstance";
 import axios from "axios";
+import { Zap } from "lucide-react";
+
+const PLAN_LIMITS: Record<string, number> = {
+  Free: 1,
+  Bronze: 3,
+  Silver: 5,
+  Gold: Infinity,
+};
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type Step = "time-check" | "request-otp" | "verify-otp" | "upload";
@@ -45,10 +53,13 @@ const BACKEND_URL = "http://localhost:5005";
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Props) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const [step, setStep] = useState<Step>("request-otp");
   const [activeTab, setActiveTab] = useState<UploadTab>("record");
+
+  const currentLimit = PLAN_LIMITS[user?.plan || "Free"];
+  const isAtTweetLimit = (user?.tweetCount || 0) >= currentLimit;
 
   // OTP state
   const [otpCode, setOtpCode] = useState(["", "", "", "", "", ""]);
@@ -177,6 +188,10 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
   // ── Send OTP ─────────────────────────────────────────────────────────────────
   const sendOtp = async () => {
     if (!user?.email) return;
+    if (isAtTweetLimit) {
+      setOtpError(`Limit reached for ${user?.plan} plan. Please upgrade.`);
+      return;
+    }
     setOtpLoading(true);
     setOtpError("");
     try {
@@ -312,6 +327,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
         headers: { "Content-Type": "multipart/form-data" },
       });
       onTweetPosted(res.data);
+      refreshUser(); // Sync tweetCount
       onClose();
     } catch (err: any) {
       setSubmitError(err.response?.data?.error || "Failed to post audio tweet.");

@@ -11,6 +11,8 @@ import { fileURLToPath } from "url";
 import fs from "fs";
 import User from "./models/user.js";
 import Tweet from "./models/tweet.js";
+import Razorpay from "razorpay";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -44,6 +46,25 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASSWORD?.replace(/\s/g, ""),
   },
 });
+
+// ── Razorpay initialization ──────────────────────────────────────────────────
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_placeholder",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "dummy_secret",
+});
+
+const PLAN_LIMITS = {
+  Free: 1,
+  Bronze: 3,
+  Silver: 5,
+  Gold: Infinity,
+};
+
+const PLAN_PRICES = {
+  Bronze: 100,
+  Silver: 300,
+  Gold: 1000,
+};
 
 // ── Multer configuration ──────────────────────────────────────────────────────
 const MAX_AUDIO_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
@@ -80,6 +101,32 @@ function isWithinAllowedWindow() {
   const totalMinutes = hour * 60 + minute;
   // 14:00 = 840 min, 19:00 = 1140 min
   return totalMinutes >= 840 && totalMinutes < 1140;
+}
+
+// ── Helper: is current time within 10 AM – 11 AM IST? (for payments) ──────────
+function isPaymentWindowOpen() {
+  const nowIST = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+  const hour = nowIST.getHours();
+  // 10:00 = 10, 11:00 is restricted
+  return hour === 10;
+}
+
+// ── Helper: calculate tweet limit ─────────────────────────────────────────────
+async function checkTweetLimit(userId) {
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
+
+  console.log(`DEBUG: User ${user.email} | Plan: ${user.plan} | Count: ${user.tweetCount} | Limit: ${PLAN_LIMITS[user.plan]}`);
+
+  const limit = PLAN_LIMITS[user.plan] || 1;
+  if (user.tweetCount >= limit) {
+    throw new Error(
+      `Post limit reached for ${user.plan} plan (${limit} tweets). Please upgrade to post more.`
+    );
+  }
+  return user;
 }
 
 // ── DB connect + server listen ────────────────────────────────────────────────
@@ -227,8 +274,8 @@ app.post("/forgot-password", async (req, res) => {
     }
 
     // ── Determine new password (custom or generated) ───────────────────────────
-    const newPassword = (customPassword && customPassword.trim()) 
-      ? customPassword.trim() 
+    const newPassword = (customPassword && customPassword.trim())
+      ? customPassword.trim()
       : generateLetterPassword(12);
 
     const isCustom = !!(customPassword && customPassword.trim());
@@ -294,14 +341,136 @@ app.post("/forgot-password", async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════
+//  SUBSCRIPTION & PAYMENT ROUTES
+// ════════════════════════════════════════════════════════════════════════════════
+
+// POST /create-subscription-order
+app.post("/create-subscription-order", async (req, res) => {
+  try {
+    if (!isPaymentWindowOpen()) {
+      return res.status(403).json({
+        error: "Payments are only allowed between 10:00 AM and 11:00 AM IST.",
+        code: "PAYMENT_TIME_RESTRICTED",
+      });
+    }
+
+    const { plan, userId } = req.body;
+    if (!PLAN_PRICES[plan]) {
+      return res.status(400).json({ error: "Invalid plan selected" });
+    }
+
+    const amount = PLAN_PRICES[plan] * 100; // in paise
+    const options = {
+      amount,
+      currency: "INR",
+      receipt: `receipt_${uuidv4().slice(0, 8)}`,
+    };
+
+    const order = await razorpay.orders.create(options);
+    return res.status(200).json(order);
+  } catch (error) {
+    console.error("create-subscription-order error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /verify-subscription-payment
+app.post("/verify-subscription-payment", async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      userId,
+      plan,
+    } = req.body;
+
+    const sign = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSign = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "dummy_secret")
+      .update(sign.toString())
+      .digest("hex");
+
+    if (razorpay_signature === expectedSign) {
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { $set: { plan, tweetCount: 0 } },
+        { new: true }
+      );
+
+      // Send Invoice Email
+      try {
+        await transporter.sendMail({
+          from: `"Twiller Premium" <${process.env.SMTP_EMAIL}>`,
+          to: user.email,
+          subject: `Invoice: ${plan} Plan Subscription`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #000; color: #fff; border: 1px solid #2f3336; border-radius: 12px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #1d9bf0, #7856ff); padding: 30px; text-align: center;">
+                <h1 style="margin: 0; font-size: 32px; letter-spacing: -1px;">🐦 Twiller Invoice</h1>
+              </div>
+              <div style="padding: 40px;">
+                <h2 style="color: #fff; margin-top: 0;">Subscription Success!</h2>
+                <p style="color: #8b98a5;">Hi <strong style="color: #fff;">${user.displayName}</strong>, your payment was successful. Your account has been upgraded to the <strong style="color: #1d9bf0;">${plan} Plan</strong>.</p>
+                
+                <div style="margin: 30px 0; padding: 20px; background: #16181c; border-radius: 8px; border: 1px solid #2f3336;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                      <td style="color: #536471; padding: 8px 0;">Order ID</td>
+                      <td style="color: #fff; text-align: right; padding: 8px 0;">${razorpay_order_id}</td>
+                    </tr>
+                    <tr>
+                      <td style="color: #536471; padding: 8px 0;">Payment ID</td>
+                      <td style="color: #fff; text-align: right; padding: 8px 0;">${razorpay_payment_id}</td>
+                    </tr>
+                    <tr style="border-top: 1px solid #2f3336;">
+                      <td style="color: #fff; font-weight: bold; padding: 15px 0 8px;">Total Amount</td>
+                      <td style="color: #1d9bf0; font-weight: bold; font-size: 20px; text-align: right; padding: 15px 0 8px;">₹${PLAN_PRICES[plan]}</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <div style="padding: 20px; background: rgba(29,155,240,0.1); border-radius: 8px; border-left: 4px solid #1d9bf0;">
+                  <p style="margin: 0; color: #fff; font-weight: 600;">Plan Benefits:</p>
+                  <p style="margin: 5px 0 0; color: #8b98a5; font-size: 14px;">Up to ${PLAN_LIMITS[plan] === Infinity ? "Unlimited" : PLAN_LIMITS[plan]} tweets per month.</p>
+                </div>
+
+                <p style="margin-top: 30px; font-size: 13px; color: #536471; text-align: center;">Thank you for supporting Twiller Premium!</p>
+              </div>
+            </div>
+          `,
+        });
+      } catch (emailErr) {
+        console.warn("Invoice email failed:", emailErr.message);
+      }
+
+      return res.status(200).json({ message: "Payment verified and plan updated", user });
+    } else {
+      console.error("Signature verification failed. Check if KEY_SECRET matches.");
+      return res.status(400).json({ error: "Invalid signature" });
+    }
+  } catch (error) {
+    console.error("verify-subscription-payment error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════════
 //  TWEET ROUTES
 // ════════════════════════════════════════════════════════════════════════════════
 
 // POST tweet
 app.post("/post", async (req, res) => {
   try {
+    const { author } = req.body;
+    await checkTweetLimit(author);
+
     const tweet = new Tweet(req.body);
     await tweet.save();
+
+    // Increment user's tweet count
+    await User.findByIdAndUpdate(author, { $inc: { tweetCount: 1 } });
+
     return res.status(201).send(tweet);
   } catch (error) {
     return res.status(400).send({ error: error.message });
@@ -505,9 +674,12 @@ app.post("/audio-tweet", audioUpload.single("audio"), async (req, res) => {
 
     // 5. Author check
     if (!authorId) {
-      fs.unlinkSync(uploadedFilePath);
+      if (uploadedFilePath) fs.unlinkSync(uploadedFilePath);
       return res.status(400).json({ error: "Author ID is required." });
     }
+
+    // Check tweet limit
+    await checkTweetLimit(authorId);
 
     // 6. Build public URL for the audio file
     const audioUrl = `/uploads/audio/${req.file.filename}`;
@@ -519,6 +691,9 @@ app.post("/audio-tweet", audioUpload.single("audio"), async (req, res) => {
       audio: audioUrl,
     });
     await tweet.save();
+
+    // Increment user's tweet count
+    await User.findByIdAndUpdate(authorId, { $inc: { tweetCount: 1 } });
 
     // Populate author for immediate response
     await tweet.populate("author");

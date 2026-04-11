@@ -122,7 +122,7 @@ export default function TweetCard({ tweet }: any) {
                   </div>
                   <span className="text-purple-300 text-sm font-semibold tracking-wide">Audio Tweet</span>
                   <span className="ml-auto flex gap-0.5 items-end h-4">
-                    {[3,5,7,5,3,6,4,7,5,3].map((h, i) => (
+                    {[3, 5, 7, 5, 3, 6, 4, 7, 5, 3].map((h, i) => (
                       <span key={i} style={{ height: `${h}px` }} className="inline-block w-1 bg-purple-500/60 rounded-sm" />
                     ))}
                   </span>
@@ -135,6 +135,10 @@ export default function TweetCard({ tweet }: any) {
                 />
               </div>
             )}
+
+
+
+
 
             <div className="flex items-center justify-between max-w-md">
               <Button
@@ -151,22 +155,20 @@ export default function TweetCard({ tweet }: any) {
               <Button
                 variant="ghost"
                 size="sm"
-                className={`flex items-center space-x-2 p-2 rounded-full hover:bg-green-900/20 group ${
-                  isRetweet
+                className={`flex items-center space-x-2 p-2 rounded-full hover:bg-green-900/20 group ${isRetweet
                     ? "text-green-400"
                     : "text-gray-500 hover:text-green-400"
-                }`}
+                  }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   retweetTweet(tweetstate._id);
                 }}
               >
                 <Repeat2
-                  className={`h-5 w-5 ${
-                    tweet.retweeted
+                  className={`h-5 w-5 ${tweet.retweeted
                       ? "text-green-400"
                       : "group-hover:text-green-400"
-                  }`}
+                    }`}
                 />
                 <span className="text-sm">
                   {formatNumber(tweetstate.retweets)}
@@ -176,20 +178,18 @@ export default function TweetCard({ tweet }: any) {
               <Button
                 variant="ghost"
                 size="sm"
-                className={`flex items-center space-x-2 p-2 rounded-full hover:bg-red-900/20 group ${
-                  isLiked ? "text-red-500" : "text-gray-500 hover:text-red-400"
-                }`}
+                className={`flex items-center space-x-2 p-2 rounded-full hover:bg-red-900/20 group ${isLiked ? "text-red-500" : "text-gray-500 hover:text-red-400"
+                  }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   likeTweet(tweetstate._id);
                 }}
               >
                 <Heart
-                  className={`h-5 w-5 ${
-                    tweetstate.liked
+                  className={`h-5 w-5 ${tweetstate.liked
                       ? "text-red-500 fill-current"
                       : "group-hover:text-red-400"
-                  }`}
+                    }`}
                 />
                 <span className="text-sm">
                   {formatNumber(tweetstate.likes)}

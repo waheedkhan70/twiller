@@ -23,6 +23,8 @@ interface User {
   website: string;
   location: string;
   notificationsEnabled: boolean;
+  plan: "Free" | "Bronze" | "Silver" | "Gold";
+  tweetCount: number;
 }
 
 interface AuthContextType {
@@ -45,6 +47,7 @@ interface AuthContextType {
   isLoading: boolean;
   googlesignin: () => void;
   toggleNotifications: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -265,6 +268,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const refreshUser = async () => {
+    if (!user?.email) return;
+    try {
+      const res = await axiosInstance.get("/loggedinuser", {
+        params: { email: user.email },
+      });
+      if (res.data) {
+        setUser(res.data);
+        localStorage.setItem("twitter-user", JSON.stringify(res.data));
+      }
+    } catch (err) {
+      console.error("Refresh user failed:", err);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -276,6 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isLoading,
         googlesignin,
         toggleNotifications,
+        refreshUser,
       }}
     >
       {children}

@@ -11,7 +11,8 @@ import {
   User,
   MoreHorizontal,
   Settings,
-  LogOut
+  LogOut,
+  Zap,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -29,9 +30,10 @@ import { useAuth } from '@/context/AuthContext';
 interface SidebarProps {
   currentPage?: string;
   onNavigate?: (page: string) => void;
+  onOpenPremium?: () => void;
 }
 
-export default function Sidebar({ currentPage = 'home', onNavigate }: SidebarProps) {
+export default function Sidebar({ currentPage = 'home', onNavigate, onOpenPremium }: SidebarProps) {
   const { user, logout } = useAuth();
 
   const navigation = [
@@ -41,6 +43,7 @@ export default function Sidebar({ currentPage = 'home', onNavigate }: SidebarPro
     { name: 'Messages', icon: Mail, current: currentPage === 'messages', page: 'messages' },
     { name: 'Bookmarks', icon: Bookmark, current: currentPage === 'bookmarks', page: 'bookmarks' },
     { name: 'Profile', icon: User, current: currentPage === 'profile', page: 'profile' },
+    { name: 'Premium', icon: Zap, current: currentPage === 'premium', onClick: onOpenPremium },
     { name: 'More', icon: MoreHorizontal, current: currentPage === 'more', page: 'more' },
   ];
 
@@ -59,7 +62,10 @@ export default function Sidebar({ currentPage = 'home', onNavigate }: SidebarPro
                 className={`w-full justify-start text-xl py-6 px-4 rounded-full hover:bg-gray-900 ${
                   item.current ? 'font-bold' : 'font-normal'
                 } text-white hover:text-white`}
-                onClick={() => onNavigate?.(item.page)}
+                onClick={() => {
+                  if (item.onClick) item.onClick();
+                  else onNavigate?.(item.page!);
+                }}
               >
                 <item.icon className="mr-4 h-7 w-7" />
                 {item.name}

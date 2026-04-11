@@ -5,10 +5,12 @@ import LoadingSpinner from "../loading-spinner";
 import Sidebar from "./Sidebar";
 import RightSidebar from "./Rightsidebar";
 import ProfilePage from "../ProfilePage";
+import SubscriptionModal from "../SubscriptionModal";
 
 const Mainlayout = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState("home");
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -29,14 +31,23 @@ const Mainlayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-screen bg-black text-white flex justify-center">
       <div className="w-20 sm:w-24 md:w-64 border-r border-gray-800">
-        <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={setCurrentPage}
+          onOpenPremium={() => setIsSubModalOpen(true)}
+        />
       </div>
       <main className="flex-1 max-w-2xl border-x border-gray-800">
-        {currentPage ==="profile" ? <ProfilePage/> :children}
+        {currentPage === "profile" ? <ProfilePage /> : children}
       </main>
       <div className="hidden lg:block w-80 p-4">
-        <RightSidebar />
+        <RightSidebar onOpenPremium={() => setIsSubModalOpen(true)} />
       </div>
+
+      <SubscriptionModal
+        isOpen={isSubModalOpen}
+        onClose={() => setIsSubModalOpen(false)}
+      />
     </div>
   );
 };

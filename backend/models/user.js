@@ -14,6 +14,10 @@ const UserSchema = mongoose.Schema({
   passwordResetDate: { type: String, default: "" },
   // Stores the generated reset password so user can log in with it
   generatedPassword: { type: String, default: "" },
+  // Subscription Plan: Free, Bronze, Silver, Gold
+  plan: { type: String, enum: ["Free", "Bronze", "Silver", "Gold"], default: "Free" },
+  // Track total tweets posted by the user
+  tweetCount: { type: Number, default: 0 },
 });
 
 export default mongoose.model("User", UserSchema);

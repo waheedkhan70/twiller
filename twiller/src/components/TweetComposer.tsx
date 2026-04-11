@@ -9,8 +9,16 @@ import { Separator } from "./ui/separator";
 import axios from "axios";
 import axiosInstance from "@/lib/axiosInstance";
 import AudioTweetModal from "./AudioTweetModal";
+import { Zap } from "lucide-react";
+
+const PLAN_LIMITS: Record<string, number> = {
+  Free: 1,
+  Bronze: 3,
+  Silver: 5,
+  Gold: Infinity,
+};
 const TweetComposer = ({ onTweetPosted }: any) => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [imageurl, setimageurl] = useState("");
@@ -27,6 +35,7 @@ const TweetComposer = ({ onTweetPosted }: any) => {
       }
       const res = await axiosInstance.post('/post', tweetdata)
       onTweetPosted(res.data)
+      refreshUser(); // Sync tweetCount
       setContent("")
       setimageurl("")
     } catch (error) {
@@ -39,6 +48,10 @@ const TweetComposer = ({ onTweetPosted }: any) => {
   const characterCount = content.length;
   const isOverLimit = characterCount > maxLength;
   const isNearLimit = characterCount > maxLength * 0.8;
+
+  const currentLimit = PLAN_LIMITS[user?.plan || "Free"];
+  const isAtTweetLimit = (user?.tweetCount || 0) >= currentLimit;
+
   if (!user) return null;
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -196,14 +209,20 @@ const TweetComposer = ({ onTweetPosted }: any) => {
 
                     <Button
                       type="submit"
-                      disabled={!content.trim() || isOverLimit || isLoading}
+                      disabled={!content.trim() || isOverLimit || isLoading || isAtTweetLimit}
                       className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-full px-6"
                     >
-                      Post
+                      {isAtTweetLimit ? "Limit Reached" : "Post"}
                     </Button>
                   </div>
                 </div>
               </div>
+              {isAtTweetLimit && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-yellow-500 bg-yellow-900/10 p-2 rounded">
+                  <Zap className="h-3 w-3" />
+                  <span>You've reached your {user.plan} plan limit. Upgrade in Premium tab to post more!</span>
+                </div>
+              )}
             </form>
           </div>
         </div>
