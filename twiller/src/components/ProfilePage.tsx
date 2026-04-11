@@ -310,36 +310,48 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 bg-transparent border-b border-gray-800 rounded-none h-auto">
+        <TabsList className="grid w-full grid-cols-6 bg-transparent border-b border-gray-800 rounded-none h-auto">
           <TabsTrigger
             value="posts"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="relative flex items-center justify-center data-[state=active]:bg-transparent data-[state=active]:text-white text-gray-400 hover:bg-gray-800/40 transition-all py-4 font-bold border-none"
           >
-            {t('common.tweets')}
+            <span>{t('common.tweets')}</span>
+            <div className="absolute bottom-0 h-[4px] w-1/2 bg-blue-500 rounded-full hidden [[data-state=active]_&]:block" />
           </TabsTrigger>
           <TabsTrigger
             value="replies"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="relative flex items-center justify-center data-[state=active]:bg-transparent data-[state=active]:text-white text-gray-400 hover:bg-gray-800/40 transition-all py-4 font-bold border-none"
           >
-            {t('common.replies')}
+            <span>{t('common.replies')}</span>
+            <div className="absolute bottom-0 h-[4px] w-1/2 bg-blue-500 rounded-full hidden [[data-state=active]_&]:block" />
           </TabsTrigger>
           <TabsTrigger
             value="highlights"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="relative flex items-center justify-center data-[state=active]:bg-transparent data-[state=active]:text-white text-gray-400 hover:bg-gray-800/40 transition-all py-4 font-bold border-none"
           >
-            Highlights
+            <span>Highlights</span>
+            <div className="absolute bottom-0 h-[4px] w-1/2 bg-blue-500 rounded-full hidden [[data-state=active]_&]:block" />
           </TabsTrigger>
           <TabsTrigger
             value="articles"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="relative flex items-center justify-center data-[state=active]:bg-transparent data-[state=active]:text-white text-gray-400 hover:bg-gray-800/40 transition-all py-4 font-bold border-none"
           >
-            Articles
+            <span>Articles</span>
+            <div className="absolute bottom-0 h-[4px] w-1/2 bg-blue-500 rounded-full hidden [[data-state=active]_&]:block" />
           </TabsTrigger>
           <TabsTrigger
             value="media"
-            className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+            className="relative flex items-center justify-center data-[state=active]:bg-transparent data-[state=active]:text-white text-gray-400 hover:bg-gray-800/40 transition-all py-4 font-bold border-none"
           >
-            Media
+            <span>Media</span>
+            <div className="absolute bottom-0 h-[4px] w-1/2 bg-blue-500 rounded-full hidden [[data-state=active]_&]:block" />
+          </TabsTrigger>
+          <TabsTrigger
+            value="security"
+            className="relative flex items-center justify-center data-[state=active]:bg-transparent data-[state=active]:text-white text-gray-400 hover:bg-gray-800/40 transition-all py-4 font-bold border-none"
+          >
+            <span>Security</span>
+            <div className="absolute bottom-0 h-[4px] w-1/2 bg-blue-500 rounded-full hidden [[data-state=active]_&]:block" />
           </TabsTrigger>
         </TabsList>
 
@@ -414,6 +426,42 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="security" className="mt-0">
+          <div className="p-4 sm:p-6 bg-black">
+            <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-800 pb-2">Login History</h2>
+            <Card className="bg-[#16181c] border border-gray-800 rounded-2xl overflow-hidden">
+              <CardContent className="p-0">
+                {!user.loginHistory || user.loginHistory.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <p>No login history recorded yet.</p>
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-gray-800">
+                    {user.loginHistory.slice().reverse().map((record: any, index: number) => (
+                      <li key={index} className="p-4 flex items-center justify-between hover:bg-gray-900 transition-colors">
+                        <div className="flex flex-col">
+                          <span className="text-gray-100 font-medium tracking-wide">
+                            <span className="text-blue-400 font-bold capitalize">{record.device}</span> ({record.os})
+                          </span>
+                          <span className="text-gray-400 text-sm mt-1">
+                            Browser: <span className="text-white">{record.browser}</span> | IP: <span className="text-white">{record.ip}</span>
+                          </span>
+                        </div>
+                        <span className="text-gray-500 text-xs text-right ml-4 whitespace-nowrap">
+                          {new Date(record.timestamp).toLocaleString(undefined, {
+                            year: 'numeric', month: 'short', day: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
       <Editprofile

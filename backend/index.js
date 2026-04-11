@@ -14,6 +14,7 @@ import Tweet from "./models/tweet.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import twilio from "twilio";
+import { UAParser } from "ua-parser-js";
 
 dotenv.config();
 
@@ -37,6 +38,8 @@ const otpStore = new Map();
 const verifiedTokens = new Map();
 // languageOtpStore: { email -> { otp, expiresAt, targetLanguage } }
 const languageOtpStore = new Map();
+// loginOtpStore: { email -> { otp, expiresAt, browser, os, device, ip } }
+const loginOtpStore = new Map();
 
 // ── Nodemailer transporter ────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
@@ -98,6 +101,16 @@ const audioUpload = multer({
     }
   },
 });
+
+// ── Helper: is mobile login allowed (10 AM to 1 PM IST)? ──────────────────
+function isMobileLoginAllowed() {
+  const nowIST = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+  );
+  const hour = nowIST.getHours();
+  // 10:00 = 10, 11:00 = 11, 12:00 = 12. Between 10 and 1 PM (13:00)
+  return hour >= 10 && hour < 13;
+}
 
 // ── Helper: is current time within 2 PM – 7 PM IST? ─────────────────────────
 function isWithinAllowedWindow() {
@@ -224,6 +237,119 @@ app.patch("/userupdate/:email", async (req, res) => {
     return res.status(200).send(updated);
   } catch (error) {
     return res.status(400).send({ error: error.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════════
+//  LOGIN ENVIRONMENT & OTP ROUTES
+// ════════════════════════════════════════════════════════════════════════════════
+
+app.post("/login-environment", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const parser = new UAParser(req.headers["user-agent"]);
+    const result = parser.getResult();
+    
+    const browser = result.browser.name || "Unknown";
+    const os = result.os.name || "Unknown";
+    const device = result.device.type || "desktop";
+    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "Unknown";
+
+    if (device === "mobile") {
+      if (!isMobileLoginAllowed()) {
+        return res.status(403).json({
+          error: "Mobile logins are only allowed between 10:00 AM and 1:00 PM IST.",
+          code: "TIME_RESTRICTED",
+        });
+      }
+    }
+
+    if (browser === "Chrome") {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = Date.now() + 5 * 1000 * 60; // 5 minutes
+      loginOtpStore.set(email, { otp, expiresAt, browser, os, device, ip });
+
+      let emailSent = false;
+      try {
+        await transporter.sendMail({
+          from: `"Twiller Security" <${process.env.SMTP_EMAIL}>`,
+          to: email,
+          subject: "Twiller Login Verification",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #000; color: #fff; border-radius: 12px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #1d9bf0, #7856ff); padding: 24px; text-align: center;">
+                <h1 style="margin: 0; font-size: 28px; letter-spacing: -1px;">🐦 Twiller</h1>
+              </div>
+              <div style="padding: 32px;">
+                <h2 style="color: #fff; margin-top: 0;">Login Verification</h2>
+                <p style="color: #8b98a5;">We noticed a login from <strong>Google Chrome</strong>. Use the OTP below to verify your login attempt.</p>
+                <div style="background: #16181c; border: 1px solid #2f3336; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+                  <span style="font-size: 40px; font-weight: 700; letter-spacing: 8px; color: #1d9bf0;">${otp}</span>
+                </div>
+                <p style="color: #536471; font-size: 13px;">If this wasn't you, someone may be trying to access your account.</p>
+              </div>
+            </div>
+          `,
+        });
+        emailSent = true;
+        console.log(`Login OTP sent to ${email}`);
+      } catch (emailErr) {
+        console.warn(`Login OTP email delivery failed. OTP: ${otp}\n   ${emailErr.message}`);
+      }
+
+      return res.status(200).json({ requiresOtp: true, message: "OTP sent to your email for verification.", emailSent });
+    }
+
+    // Otherwise, record login and succeed
+    user.loginHistory.push({ browser, os, device, ip, timestamp: new Date() });
+    await user.save();
+
+    return res.status(200).json({ requiresOtp: false, user, message: "Login environment verified." });
+  } catch (error) {
+    console.error("login-environment error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/verify-login-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: "Email and OTP are required" });
+
+    const record = loginOtpStore.get(email);
+    if (!record) return res.status(400).json({ error: "No OTP found for this email. Please request a new one." });
+    
+    if (Date.now() > record.expiresAt) {
+      loginOtpStore.delete(email);
+      return res.status(400).json({ error: "OTP has expired. Please try logging in again." });
+    }
+
+    if (record.otp !== otp.trim()) {
+      return res.status(400).json({ error: "Invalid OTP. Please try again." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    user.loginHistory.push({
+      browser: record.browser,
+      os: record.os,
+      device: record.device,
+      ip: record.ip,
+      timestamp: new Date()
+    });
+    await user.save();
+
+    loginOtpStore.delete(email);
+
+    return res.status(200).json({ success: true, user, message: "OTP verified successfully." });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 });
 

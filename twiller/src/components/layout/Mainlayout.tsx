@@ -6,11 +6,13 @@ import Sidebar from "./Sidebar";
 import RightSidebar from "./Rightsidebar";
 import ProfilePage from "../ProfilePage";
 import SubscriptionModal from "../SubscriptionModal";
+import PostModal from "../PostModal";
 
 const Mainlayout = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState("home");
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -35,6 +37,7 @@ const Mainlayout = ({ children }: { children: React.ReactNode }) => {
           currentPage={currentPage}
           onNavigate={setCurrentPage}
           onOpenPremium={() => setIsSubModalOpen(true)}
+          onOpenPost={() => setIsPostModalOpen(true)}
         />
       </div>
       <main className="flex-1 max-w-2xl border-x border-gray-800">
@@ -47,6 +50,15 @@ const Mainlayout = ({ children }: { children: React.ReactNode }) => {
       <SubscriptionModal
         isOpen={isSubModalOpen}
         onClose={() => setIsSubModalOpen(false)}
+      />
+
+      <PostModal 
+        isOpen={isPostModalOpen} 
+        onClose={() => setIsPostModalOpen(false)} 
+        onTweetPosted={() => {
+          // If we had a global refresh, we'd call it here
+          // For now, TweetComposer handles local state
+        }}
       />
     </div>
   );

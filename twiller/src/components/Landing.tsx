@@ -96,7 +96,7 @@ export default function LandingPage() {
               className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-full text-base h-12"
               onClick={() => openAuthModal("signup")}
             >
-              {t('common.create_account')}
+              Create Account
             </Button>
             <p className="text-xs text-gray-400 leading-relaxed">
               {t('landing.terms_agree')}{" "}

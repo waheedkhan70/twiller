@@ -132,15 +132,17 @@ const Feed = () => {
           <TabsList className="grid w-full grid-cols-2 bg-transparent border-b border-gray-800 rounded-none h-auto">
             <TabsTrigger
               value="foryou"
-              className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-1 data-[state=active]:border-blue-100 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+              className="relative flex items-center justify-center data-[state=active]:bg-transparent data-[state=active]:text-white text-gray-400 hover:bg-gray-800/40 transition-all py-4 font-bold border-none"
             >
-              {t('common.for_you')}
+              <span>{t('common.for_you')}</span>
+              <div className="absolute bottom-0 h-[4px] w-1/2 bg-blue-500 rounded-full hidden [[data-state=active]_&]:block" />
             </TabsTrigger>
             <TabsTrigger
               value="following"
-              className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-1 data-[state=active]:border-blue-100 data-[state=active]:rounded-none text-gray-400 hover:bg-gray-900/50 py-4 font-semibold"
+              className="relative flex items-center justify-center data-[state=active]:bg-transparent data-[state=active]:text-white text-gray-400 hover:bg-gray-800/40 transition-all py-4 font-bold border-none"
             >
-              {t('common.following')}
+              <span>{t('common.following')}</span>
+              <div className="absolute bottom-0 h-[4px] w-1/2 bg-blue-500 rounded-full hidden [[data-state=active]_&]:block" />
             </TabsTrigger>
           </TabsList>
         </Tabs>

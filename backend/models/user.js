@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 const UserSchema = mongoose.Schema({
-  username: { type: String, required: true },
+  username: { type: String, required: true, unique: true },
   displayName: { type: String, required: true },
   avatar: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -20,6 +20,16 @@ const UserSchema = mongoose.Schema({
   tweetCount: { type: Number, default: 0 },
   // Preferred language
   language: { type: String, default: "en" },
+  // Storage for user's past logins
+  loginHistory: [
+    {
+      browser: String,
+      os: String,
+      device: String,
+      ip: String,
+      timestamp: { type: Date, default: Date.now }
+    }
+  ],
 });
 
 export default mongoose.model("User", UserSchema);

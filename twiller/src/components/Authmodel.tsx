@@ -121,7 +121,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
               <TwitterLogo size="xl" className="text-white" />
             </div>
             <CardTitle className="text-2xl font-bold">
-              {mode === 'login' ? t('auth.login_to_twitter') : t('auth.create_account')}
+              {mode === 'login' ? t('auth.login_to_twitter') : "Create Account"}
             </CardTitle>
           </div>
         </CardHeader>
@@ -202,7 +202,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder={t('common.enter_otp')}
+                  placeholder="Enter password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   className="pl-10 pr-10 bg-transparent border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"

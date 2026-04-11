@@ -13,6 +13,7 @@ import { auth } from "./firebase";
 import axiosInstance from "../lib/axiosInstance";
 import "../lib/i18n";
 import i18n from "../lib/i18n";
+import LoginOTPModal from "../components/LoginOTPModal";
 
 interface User {
   _id: string;
@@ -27,6 +28,13 @@ interface User {
   notificationsEnabled: boolean;
   plan: "Free" | "Bronze" | "Silver" | "Gold";
   tweetCount: number;
+  loginHistory?: Array<{
+    browser: string;
+    os: string;
+    device: string;
+    ip: string;
+    timestamp: string;
+  }>;
 }
 
 interface AuthContextType {
@@ -67,6 +75,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // States for Login Environment OTP feature
+  const [showLoginOtp, setShowLoginOtp] = useState(false);
+  const [pendingLoginEmail, setPendingLoginEmail] = useState("");
+
+  const handleOtpVerified = (userData: any) => {
+    setShowLoginOtp(false);
+    setPendingLoginEmail("");
+    setUser(userData);
+    localStorage.setItem("twitter-user", JSON.stringify(userData));
+    if (userData.language && userData.language !== i18n.language) {
+      i18n.changeLanguage(userData.language);
+    }
+  };
 
   // Load user from localStorage on mount (initial sync)
   useEffect(() => {
@@ -110,36 +132,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+    let successfulEmail = "";
+    
     try {
       // 1. Try Firebase authentication first
       const usercred = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseuser = usercred.user;
-      const res = await axiosInstance.get("/loggedinuser", {
-        params: { email: firebaseuser.email },
-      });
-      if (res.data) {
-        setUser(res.data);
-        localStorage.setItem("twitter-user", JSON.stringify(res.data));
-      }
+      successfulEmail = usercred.user.email || email;
     } catch (firebaseErr: any) {
       console.warn("Firebase login failed, trying backend fallback...", firebaseErr.message);
       
-      // 2. Fallback to backend login (for checking generatedPassword in MongoDB)
+      // 2. Fallback to backend login
       try {
         const res = await axiosInstance.post("/login", { email, password });
-        if (res.data) {
-          setUser(res.data);
-          localStorage.setItem("twitter-user", JSON.stringify(res.data));
-        } else {
+        if (!res.data) {
           throw new Error("Invalid credentials");
         }
+        successfulEmail = res.data.email || email;
       } catch (backendErr: any) {
         console.error("Backend login also failed:", backendErr.response?.data?.error || backendErr.message);
         throw new Error(backendErr.response?.data?.error || "Invalid email or password");
       }
-    } finally {
-      setIsLoading(false);
     }
+
+    if (successfulEmail) {
+      try {
+        const envRes = await axiosInstance.post("/login-environment", { email: successfulEmail });
+        
+        if (envRes.data.requiresOtp) {
+          setPendingLoginEmail(successfulEmail);
+          setShowLoginOtp(true);
+        } else {
+          setUser(envRes.data.user);
+          localStorage.setItem("twitter-user", JSON.stringify(envRes.data.user));
+          if (envRes.data.user.language && envRes.data.user.language !== i18n.language) {
+            i18n.changeLanguage(envRes.data.user.language);
+          }
+        }
+      } catch (envErr: any) {
+        // Log out immediately if environment check fails (e.g. 403 Mobile limit)
+        await signOut(auth);
+        throw new Error(envErr.response?.data?.error || "Environment check failed. Login restricted.");
+      }
+    }
+    
+    setIsLoading(false);
   };
 
   const signup = async (
@@ -149,33 +185,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     displayName: string
   ) => {
     setIsLoading(true);
-    // Mock authentication - in real app, this would call an API
-    const usercred = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    const user = usercred.user;
-    const newuser: any = {
-      username,
-      displayName,
-      avatar: user.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
-      email: user.email,
-    };
-    const res = await axiosInstance.post("/register", newuser);
-    if (res.data) {
-      setUser(res.data);
-      localStorage.setItem("twitter-user", JSON.stringify(res.data));
+    try {
+      const usercred = await createUserWithEmailAndPassword(auth, email, password);
+      const user = usercred.user;
+      const newuser: any = {
+        username,
+        displayName,
+        avatar: user.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
+        email: user.email,
+      };
+      
+      const res = await axiosInstance.post("/register", newuser);
+
+      if (res.data) {
+        // Enforce the environment rules on initial signup login too
+        try {
+          const envRes = await axiosInstance.post("/login-environment", { email: user.email });
+          if (envRes.data.requiresOtp) {
+            setPendingLoginEmail(user.email || '');
+            setShowLoginOtp(true);
+          } else {
+            setUser(envRes.data.user);
+            localStorage.setItem("twitter-user", JSON.stringify(envRes.data.user));
+            if (envRes.data.user.language && envRes.data.user.language !== i18n.language) {
+              i18n.changeLanguage(envRes.data.user.language);
+            }
+          }
+        } catch (envErr: any) {
+          await signOut(auth);
+          throw new Error(envErr.response?.data?.error || "Environment check failed. Login restricted.");
+        }
+      }
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
-    // const mockUser: User = {
-    //   id: '1',
-    //   username,
-    //   displayName,
-    //   avatar: 'https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400',
-    //   bio: '',
-    //   joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    // };
-    setIsLoading(false);
   };
 
   const logout = async () => {
@@ -237,17 +283,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("No email found in Google account");
       }
 
-      let userData;
-
+      // First check if user exists in our DB, if not, register them
       try {
-        const res = await axiosInstance.get("/loggedinuser", {
+        await axiosInstance.get("/loggedinuser", {
           params: { email: firebaseuser.email },
         });
-        if (res.data) {
-          userData = res.data;
-        } else {
-          throw new Error("User not found");
-        }
       } catch (err: any) {
         const newuser: any = {
           username: firebaseuser.email.split("@")[0],
@@ -255,20 +295,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           avatar: firebaseuser.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
           email: firebaseuser.email,
         };
-
-        const registerRes = await axiosInstance.post("/register", newuser);
-        userData = registerRes.data;
+        await axiosInstance.post("/register", newuser);
       }
 
-      if (userData) {
-        setUser(userData);
-        localStorage.setItem("twitter-user", JSON.stringify(userData));
-      } else {
-        throw new Error("Login/Register failed: No user data returned");
+      // Once user exists, check login environment
+      try {
+        const envRes = await axiosInstance.post("/login-environment", { email: firebaseuser.email });
+        if (envRes.data.requiresOtp) {
+          setPendingLoginEmail(firebaseuser.email);
+          setShowLoginOtp(true);
+        } else {
+          setUser(envRes.data.user);
+          localStorage.setItem("twitter-user", JSON.stringify(envRes.data.user));
+          if (envRes.data.user.language && envRes.data.user.language !== i18n.language) {
+            i18n.changeLanguage(envRes.data.user.language);
+          }
+        }
+      } catch (envErr: any) {
+        await signOut(auth);
+        throw new Error(envErr.response?.data?.error || "Environment check failed. Login restricted.");
       }
+
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
-      alert(error.response?.data?.message || error.message || "Login failed");
+      alert(error.response?.data?.error || error.message || "Login failed");
     } finally {
       setIsLoading(false);
     }
@@ -306,6 +356,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }}
     >
       {children}
+      <LoginOTPModal 
+        isOpen={showLoginOtp} 
+        onClose={() => setShowLoginOtp(false)} 
+        email={pendingLoginEmail} 
+        onVerified={handleOtpVerified} 
+      />
     </AuthContext.Provider>
   );
 };

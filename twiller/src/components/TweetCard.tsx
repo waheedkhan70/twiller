@@ -124,10 +124,7 @@ export default function TweetCard({ tweet, onTweetDeleted }: any) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="bg-black border-gray-800 text-white min-w-[160px]">
-                    <DropdownMenuItem className="hover:bg-gray-900 cursor-pointer p-3">
-                      <Share className="mr-2 h-4 w-4" />
-                      <span>{t('tweet.share')}</span>
-                    </DropdownMenuItem>
+
                     {user?._id === tweetstate.author._id && (
                       <DropdownMenuItem 
                         className="text-red-500 hover:bg-red-950/30 cursor-pointer p-3 focus:text-red-500"
@@ -239,13 +236,7 @@ export default function TweetCard({ tweet, onTweetDeleted }: any) {
                 </span>
               </Button>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex items-center space-x-2 p-2 rounded-full hover:bg-blue-900/20 text-gray-500 hover:text-blue-400 group"
-              >
-                <Share className="h-5 w-5 group-hover:text-blue-400" />
-              </Button>
+
             </div>
           </div>
         </div>
