@@ -23,6 +23,7 @@ interface User {
   bio?: string;
   joinedDate: string;
   email: string;
+  phone?: string;
   website: string;
   location: string;
   notificationsEnabled: boolean;
