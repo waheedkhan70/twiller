@@ -183,7 +183,7 @@ export default function TweetCard({ tweet, onTweetDeleted }: any) {
                   </span>
                 </div>
                 <audio
-                  src={`http://localhost:5005${tweetstate.audio}`}
+                  src={`${process.env.BACKEND_URL || "https://twiller-backend-yyp2.onrender.com"}${tweetstate.audio}`}
                   controls
                   className="w-full h-10 rounded-lg"
                   style={{ accentColor: "#a855f7" }}
