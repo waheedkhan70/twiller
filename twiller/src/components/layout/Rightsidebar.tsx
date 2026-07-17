@@ -36,6 +36,10 @@ const suggestions = [
 
 import { useTranslation } from 'react-i18next';
 
+interface RightSidebarProps {
+  onOpenPremium: () => void;
+}
+
 export default function RightSidebar({ onOpenPremium }: RightSidebarProps) {
   const { t } = useTranslation();
   return (
