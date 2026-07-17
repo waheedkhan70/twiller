@@ -152,12 +152,6 @@ const TweetComposer = ({ onTweetPosted }: any) => {
                   </Button>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <Globe className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm text-blue-400 font-semibold">
-                      {t('tweet.everyone_reply')}
-                    </span>
-                  </div>
                   <div className="flex items-center space-x-3">
                     {characterCount > 0 && (
                       <div className="flex items-center space-x-2">

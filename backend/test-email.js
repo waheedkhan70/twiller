@@ -13,11 +13,22 @@ const transporter = nodemailer.createTransport({
 });
 
 console.log("Testing SMTP connection...");
-transporter.verify((error, success) => {
+transporter.verify(async (error, success) => {
   if (error) {
     console.error("SMTP Connection Error:", error);
   } else {
     console.log("SMTP Server is ready to take our messages");
+    try {
+      let info = await transporter.sendMail({
+        from: `"Test" <${process.env.SMTP_EMAIL?.trim()}>`,
+        to: process.env.SMTP_EMAIL?.trim(),
+        subject: "Test Email",
+        text: "This is a test email.",
+      });
+      console.log("Message sent: %s", info.messageId);
+    } catch (sendError) {
+      console.error("Failed to send email:", sendError);
+    }
   }
   process.exit();
 });

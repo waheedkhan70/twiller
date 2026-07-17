@@ -9,10 +9,11 @@ interface Props {
   onClose: () => void;
   email: string;
   targetLanguage: string;
+  method?: string;
   onVerified: () => void;
 }
 
-export default function LanguageOTPModal({ isOpen, onClose, email, targetLanguage, onVerified }: Props) {
+export default function LanguageOTPModal({ isOpen, onClose, email, targetLanguage, method, onVerified }: Props) {
   const { t } = useTranslation();
   const [otpCode, setOtpCode] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
@@ -80,6 +81,11 @@ export default function LanguageOTPModal({ isOpen, onClose, email, targetLanguag
               <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             </div>
             <p className="text-[#8b98a5] mb-2">{t('common.enter_otp')}</p>
+            <p className="text-sm text-[#536471] mb-2">
+              {method === "email" 
+                ? "OTP sent to your registered email address." 
+                : "OTP sent to your registered mobile number."}
+            </p>
             <p className="text-sm text-[#536471]">
               Verification required to switch language to <span className="text-[#1d9bf0] font-bold uppercase">{targetLanguage}</span>
             </p>

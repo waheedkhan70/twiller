@@ -112,30 +112,45 @@ export default function TweetCard({ tweet, onTweetDeleted }: any) {
                     year: "numeric",
                   })}
               </span>
-              <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="p-1 rounded-full hover:bg-gray-900"
-                    >
-                      <MoreHorizontal className="h-5 w-5 text-gray-500" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-black border-gray-800 text-white min-w-[160px]">
+              <div className="ml-auto flex items-center" onClick={(e) => e.stopPropagation()}>
+                {/* Mobile/Tab Delete Icon */}
+                {user?._id === tweetstate.author._id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-2 rounded-full hover:bg-red-950/30 text-gray-500 group lg:hidden"
+                    onClick={deleteTweet}
+                    aria-label={t('tweet.delete')}
+                  >
+                    <Trash2 className="h-5 w-5 group-hover:text-red-500 transition-colors" />
+                  </Button>
+                )}
 
-                    {user?._id === tweetstate.author._id && (
-                      <DropdownMenuItem
-                        className="text-red-500 hover:bg-red-950/30 cursor-pointer p-3 focus:text-red-500"
-                        onClick={deleteTweet}
+                {/* Desktop Dropdown Menu */}
+                <div className="hidden lg:block">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-1 rounded-full hover:bg-gray-900"
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        <span>{t('tweet.delete')}</span>
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                        <MoreHorizontal className="h-5 w-5 text-gray-500" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-black border-gray-800 text-white min-w-[160px]">
+                      {user?._id === tweetstate.author._id && (
+                        <DropdownMenuItem
+                          className="text-red-500 hover:bg-red-950/30 cursor-pointer p-3 focus:text-red-500"
+                          onClick={deleteTweet}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          <span>{t('tweet.delete')}</span>
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </div>
 

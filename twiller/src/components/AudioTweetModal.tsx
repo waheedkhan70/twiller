@@ -50,7 +50,6 @@ function maskEmail(email: string) {
 
 const MAX_DURATION_SECONDS = 300; // 5 min
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
-const BACKEND_URL = "http://localhost:5005";
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Props) {
@@ -197,7 +196,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
     setOtpLoading(true);
     setOtpError("");
     try {
-      const res = await axios.post(`${BACKEND_URL}/send-otp`, { email: user.email });
+      const res = await axiosInstance.post(`/send-otp`, { email: user.email });
       // emailSent=false means Gmail creds failed but OTP was printed to backend console
       setEmailSentHint(res.data.emailSent === false);
       setStep("verify-otp");
@@ -220,7 +219,7 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
     setOtpLoading(true);
     setOtpError("");
     try {
-      const res = await axios.post(`${BACKEND_URL}/verify-otp`, { email: user?.email, otp });
+      const res = await axiosInstance.post(`/verify-otp`, { email: user?.email, otp });
       setVerifiedToken(res.data.token);
       setStep("upload");
     } catch (err: any) {
@@ -325,8 +324,8 @@ export default function AudioTweetModal({ isOpen, onClose, onTweetPosted }: Prop
     formData.append("token", verifiedToken);
 
     try {
-      const res = await axios.post(`${BACKEND_URL}/audio-tweet`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const res = await axiosInstance.post(`/audio-tweet`, formData, {
+        headers: { "Content-Type": undefined },
       });
       onTweetPosted(res.data);
       refreshUser(); // Sync tweetCount

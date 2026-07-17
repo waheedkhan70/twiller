@@ -11,6 +11,7 @@ import { fileURLToPath } from "url";
 import fs from "fs";
 import User from "./models/user.js";
 import Tweet from "./models/tweet.js";
+import Audio from "./models/audio.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import twilio from "twilio";
@@ -80,15 +81,7 @@ const PLAN_PRICES = {
 // ── Multer configuration ──────────────────────────────────────────────────────
 const MAX_AUDIO_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 
-const audioStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "uploads", "audio"));
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || ".webm";
-    cb(null, `audio_${Date.now()}_${uuidv4().slice(0, 8)}${ext}`);
-  },
-});
+const audioStorage = multer.memoryStorage();
 
 const audioUpload = multer({
   storage: audioStorage,
@@ -149,6 +142,38 @@ async function checkTweetLimit(userId) {
   }
   return user;
 }
+
+/**
+ * Sanitizes and formats an Indian phone number to E.164 format (+91).
+ * 
+ * @param {string|number} phoneInput - The raw phone number from the client.
+ * @returns {string|null} The E.164 formatted number, or null if invalid.
+ */
+const formatToE164 = (phoneInput) => {
+  if (!phoneInput) return null;
+
+  // 1. Convert to string and strip absolutely everything except digits
+  let cleaned = phoneInput.toString().replace(/\D/g, '');
+
+  // 2. Handle common Indian prefixes
+  // If the user typed '91' at the start (making it 12 digits total)
+  if (cleaned.startsWith('91') && cleaned.length === 12) {
+    cleaned = cleaned.slice(2);
+  } 
+  // If the user typed a leading '0' (making it 11 digits total)
+  else if (cleaned.startsWith('0') && cleaned.length === 11) {
+    cleaned = cleaned.slice(1);
+  }
+
+  // 3. Validate that exactly 10 digits remain
+  if (cleaned.length !== 10) {
+    console.warn(`Invalid phone number: expected 10 digits, got ${cleaned.length}`);
+    return null; // Or throw new Error("Invalid phone number format");
+  }
+
+  // 4. Return with the required Twilio E.164 formatting
+  return `+91${cleaned}`;
+};
 
 // ── DB connect + server listen ────────────────────────────────────────────────
 mongoose
@@ -804,13 +829,11 @@ app.post("/verify-otp", async (req, res) => {
 
 // POST /audio-tweet — upload audio file and create tweet
 app.post("/audio-tweet", audioUpload.single("audio"), async (req, res) => {
-  const uploadedFilePath = req.file?.path;
   try {
     const { authorId, content, token } = req.body;
 
     // 1. Time window check
     if (!isWithinAllowedWindow()) {
-      if (uploadedFilePath) fs.unlinkSync(uploadedFilePath);
       return res.status(403).json({
         error: "Audio tweets are only allowed between 2:00 PM and 7:00 PM IST.",
         code: "TIME_RESTRICTED",
@@ -819,13 +842,11 @@ app.post("/audio-tweet", audioUpload.single("audio"), async (req, res) => {
 
     // 2. Token validation
     if (!token) {
-      if (uploadedFilePath) fs.unlinkSync(uploadedFilePath);
       return res.status(401).json({ error: "Verification token is required." });
     }
     const tokenRecord = verifiedTokens.get(token);
     if (!tokenRecord || Date.now() > tokenRecord.expiresAt) {
       verifiedTokens.delete(token);
-      if (uploadedFilePath) fs.unlinkSync(uploadedFilePath);
       return res.status(401).json({ error: "Session expired or invalid. Please verify OTP again." });
     }
 
@@ -835,11 +856,9 @@ app.post("/audio-tweet", audioUpload.single("audio"), async (req, res) => {
     }
 
     // 4. Duration check (≤ 5 minutes = 300 seconds)
-    const fileBuffer = fs.readFileSync(uploadedFilePath);
-    const metadata = await parseBuffer(fileBuffer, { mimeType: req.file.mimetype });
+    const metadata = await parseBuffer(req.file.buffer, { mimeType: req.file.mimetype });
     const durationSeconds = metadata.format.duration || 0;
     if (durationSeconds > 300) {
-      fs.unlinkSync(uploadedFilePath);
       return res.status(400).json({
         error: `Audio duration (${Math.ceil(durationSeconds)}s) exceeds the 5-minute limit.`,
         code: "DURATION_EXCEEDED",
@@ -848,17 +867,23 @@ app.post("/audio-tweet", audioUpload.single("audio"), async (req, res) => {
 
     // 5. Author check
     if (!authorId) {
-      if (uploadedFilePath) fs.unlinkSync(uploadedFilePath);
       return res.status(400).json({ error: "Author ID is required." });
     }
 
     // Check tweet limit
     await checkTweetLimit(authorId);
 
-    // 6. Build public URL for the audio file
-    const audioUrl = `/uploads/audio/${req.file.filename}`;
+    // 6. Save Audio to DB
+    const newAudio = new Audio({
+      fileName: req.file.originalname,
+      audioData: req.file.buffer,
+      contentType: req.file.mimetype,
+      author: authorId,
+    });
+    await newAudio.save();
 
-    // 7. Create tweet — content is optional for audio tweets
+    // 7. Create tweet
+    const audioUrl = `/api/audio/${newAudio._id}`;
     const tweet = new Tweet({
       author: authorId,
       content: content || "🎙️ Audio Tweet",
@@ -877,11 +902,23 @@ app.post("/audio-tweet", audioUpload.single("audio"), async (req, res) => {
 
     return res.status(201).json(tweet);
   } catch (error) {
-    if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
-      fs.unlinkSync(uploadedFilePath);
-    }
     console.error("audio-tweet error:", error);
     return res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/audio/:id - stream audio file from DB
+app.get("/api/audio/:id", async (req, res) => {
+  try {
+    const audio = await Audio.findById(req.params.id);
+    if (!audio || !audio.audioData) {
+      return res.status(404).send("Audio not found");
+    }
+    res.set("Content-Type", audio.contentType);
+    res.send(audio.audioData);
+  } catch (error) {
+    console.error("audio streaming error:", error);
+    res.status(500).send("Error retrieving audio");
   }
 });
 // ════════════════════════════════════════════════════════════════════════════════
@@ -944,11 +981,17 @@ app.post("/send-language-otp", async (req, res) => {
       return res.status(200).json({ message: emailSent ? "OTP sent to your email" : "OTP generated (check console)", emailSent, method: "email" });
     } else {
       // Send to mobile logic
-      const phoneNumber = user.phone ? user.phone.trim() : "";
-      let smsSent = false;
-      let usedFallback = false;
+      let phoneNumber = user.phone ? user.phone.trim() : "";
+      
+      // Format to E.164
+      phoneNumber = formatToE164(phoneNumber);
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: "A valid 10-digit registered Indian mobile number is required to switch to this language." });
+      }
 
-      if (phoneNumber && twilioClient && process.env.TWILIO_FROM_NUMBER) {
+      let smsSent = false;
+      if (twilioClient && process.env.TWILIO_FROM_NUMBER) {
         // Try real SMS
         console.log(`Sending language switch OTP via Twilio to: ${phoneNumber}`);
         try {
@@ -960,23 +1003,10 @@ app.post("/send-language-otp", async (req, res) => {
           smsSent = true;
         } catch (err) {
           console.warn(` Twilio SMS failed: ${err.message}`);
+          return res.status(500).json({ error: "Failed to send SMS. Please check mobile number or service." });
         }
-      }
-
-      if (!smsSent) {
-        // Fallback to email if phone is missing or SMS failed
-        console.log(`Falling back to email for non-French OTP for ${email}`);
-        try {
-          await transporter.sendMail({
-            from: `"Twiller Security" <${process.env.SMTP_EMAIL}>`,
-            to: email,
-            subject: "Twiller Verification Fallback",
-            html: `<p>You requested a language change but we couldn't send an SMS. Use this OTP: <b>${otp}</b></p>`
-          });
-          usedFallback = true;
-        } catch (err) {
-          console.warn(` Fallback email failed: ${err.message}`);
-        }
+      } else {
+         console.warn(` Twilio is not configured. Showing OTP in console.`);
       }
 
       console.log("\n╔═══════════════════════════════════════╗");
@@ -985,14 +1015,13 @@ app.post("/send-language-otp", async (req, res) => {
       console.log(`║  Email : ${email.padEnd(29)}║`);
       console.log(`║  Phone : ${phoneNumber.padEnd(29)}║`);
       console.log(`║  OTP   : ${otp.padEnd(29)}║`);
-      console.log(`║  Sent  : ${smsSent ? "Twilio SMS" : usedFallback ? "Email Fallback" : "Console Only"}  ║`);
+      console.log(`║  Sent  : ${smsSent ? "Twilio SMS" : "Console Only"}  ║`);
       console.log("╚═══════════════════════════════════════╝\n");
 
       return res.status(200).json({ 
-        message: smsSent ? "OTP sent to your mobile" : usedFallback ? "OTP sent to your email (SMS fallback)" : "OTP generated (check console)", 
+        message: smsSent ? "OTP sent to your mobile number" : "OTP generated (check console)", 
         smsSent, 
-        usedFallback,
-        method: smsSent ? "mobile" : "email"
+        method: "mobile"
       });
     }
   } catch (error) {

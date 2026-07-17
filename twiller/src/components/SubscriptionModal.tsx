@@ -146,7 +146,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl bg-black border-gray-800 text-white p-0 overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] bg-black border-gray-800 text-white p-0 overflow-y-auto overflow-x-hidden">
         <div className="p-6">
           <DialogHeader className="mb-6">
             <DialogTitle className="text-3xl font-bold flex items-center gap-2">

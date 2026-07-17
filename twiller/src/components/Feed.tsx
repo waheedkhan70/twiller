@@ -7,6 +7,9 @@ import TweetComposer from "./TweetComposer";
 import axiosInstance from "@/lib/axiosInstance";
 import { useNotification } from "@/context/NotificationContext";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/context/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import TwitterLogo from "./Twitterlogo";
 
 interface Tweet {
   id: string;
@@ -92,6 +95,7 @@ const Feed = () => {
   const [loading, setloading] = useState(false);
   const { triggerTweetNotification } = useNotification();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const fetchTweets = async () => {
     try {
       setloading(true);
@@ -101,7 +105,7 @@ const Feed = () => {
       // Fire notifications for keyword-matching tweets
       fetchedTweets.forEach((tweet: any) => {
         const authorName = tweet.author?.displayName || tweet.author?.username || t('tweet.someone');
-        triggerTweetNotification(tweet.content, authorName);
+        triggerTweetNotification(tweet._id, tweet.content, authorName);
       });
     } catch (error) {
       console.error(error);
@@ -116,7 +120,7 @@ const Feed = () => {
     setTweets((prev: any) => [newtweet, ...prev]);
     // Fire notification for the newly posted tweet
     const authorName = newtweet.author?.displayName || newtweet.author?.username || t('tweet.someone');
-    triggerTweetNotification(newtweet.content, authorName);
+    triggerTweetNotification(newtweet._id, newtweet.content, authorName);
   };
   const handletweetdelete = (tweetId: string) => {
     setTweets((prev: any) => prev.filter((t: any) => t._id !== tweetId));
@@ -124,7 +128,22 @@ const Feed = () => {
   return (
     <div className="min-h-screen">
       <div className="sticky top-0 bg-black/90 backdrop-blur-md border-b border-gray-800 z-10">
-        <div className="px-4 py-3">
+        {/* Mobile Header */}
+        <div className="md:hidden px-4 py-3 flex items-center justify-between">
+          <button onClick={() => window.dispatchEvent(new CustomEvent('open-mobile-menu'))}>
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={user?.avatar} />
+              <AvatarFallback>{user?.displayName?.[0]}</AvatarFallback>
+            </Avatar>
+          </button>
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <TwitterLogo size="sm" className="text-white" />
+          </div>
+          <div className="w-8"></div>
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden md:block px-4 py-3">
           <h1 className="text-xl font-bold text-white">{t('common.home')}</h1>
         </div>
 
@@ -147,7 +166,9 @@ const Feed = () => {
           </TabsList>
         </Tabs>
       </div>
-      <TweetComposer onTweetPosted={handlenewtweet}/>
+      <div className="hidden md:block">
+        <TweetComposer onTweetPosted={handlenewtweet}/>
+      </div>
       <div className="divide-y divide-gray-800">
         {loading ? (
           <Card className="bg-black border-none">
