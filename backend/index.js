@@ -23,7 +23,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'https://twiller-ten.vercel.app', // No trailing slash!
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true // Important if you are setting cookies/tokens during signup
+}));
 app.use(express.json());
 
 // Serve uploaded audio files as static assets
