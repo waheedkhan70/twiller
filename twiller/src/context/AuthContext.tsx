@@ -284,20 +284,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("No email found in Google account");
       }
 
-      // First check if user exists in our DB, if not, register them
-      try {
-        await axiosInstance.get("/loggedinuser", {
-          params: { email: firebaseuser.email },
-        });
-      } catch (err: any) {
-        const newuser: any = {
-          username: firebaseuser.email.split("@")[0],
-          displayName: firebaseuser.displayName || "User",
-          avatar: firebaseuser.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
-          email: firebaseuser.email,
-        };
-        await axiosInstance.post("/register", newuser);
-      }
+      const userData: any = {
+        username: firebaseuser.email.split("@")[0],
+        displayName: firebaseuser.displayName || "User",
+        avatar: firebaseuser.photoURL || "https://images.pexels.com/photos/1139743/pexels-photo-1139743.jpeg?auto=compress&cs=tinysrgb&w=400",
+        email: firebaseuser.email,
+      };
+
+      // Send data to your backend /register endpoint FIRST
+      // Your backend handles checking if they exist or creating them safely
+      await axiosInstance.post("/register", userData);
 
       // Once user exists, check login environment
       try {
